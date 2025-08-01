@@ -111,3 +111,66 @@
   Uber backend server is running on http://localhost:3000
   Connected to DB successfully!
   ```
+
+## Server Specific API Endpoint Implementation
+
+- Define the server specific routes in the `app.js` file using the `app.use(path, routesReferances)` method. Here the `routesReferances` will be defined in `./routes/serverRoutes.js` file and then all the routes defined there will be exposed to external files so that those routes references can be used from the other external files like `app.js` file. Here is how the `./app.js` file looks like at this point.
+
+  ```jsx
+  require("dotenv").config();
+  const express = require("express");
+  const cors = rquire("cors");
+  const connectToDb = require("./bd/db.js");
+  const serverRoutes = require("./routes/serverRouter.js");
+
+  // step 1: Initialize an express app instance
+  const app = express();
+
+  // step 2: configure app level middleware
+  app.use(cors());
+
+  // step 3: connect to the DB
+  connectToDb();
+
+  // step: 4: defind routes
+  app.get("/", serverRoutes); // this will execute all the server specific routes
+
+  // export the app instance
+  module.exports = app;
+  ```
+
+- Create a routes directory named`routes` in the root and within the `./routes` create a file named `serverRouter.js` in which all the server specific API endpoints will be defined and then finally will be exposed to the other external files by exporting them all. Here is how the `./routes/sererRouter.js` file looks like at this point.
+  ```jsx
+  const express = require("express");
+  const serverRouter = express.Router();
+  const serverController = require("../controllers/serverController.js");
+
+  // step 1: define all the server specific API
+  serverRouter.get("/", serverController.greetPeople);
+
+  // step 2: export the serverRouter
+  module.exports = serverRouter;
+  ```
+  Here the `greetPople` is a controller defined in the `./controllers/serverController.js` file which will be created in the next step. The `serverController.js` will be holding all the required controller function definitions that are specific to the server only.
+- Create a directory name `controllers` in the root and inside of this `./controllers` directory create the `serverController.js` file which will actually expose all the controller definitions specific to the server only. Here is how the `./controllers/serverController.js` file looks like at this moment.
+  ```jsx
+  // @name: helloWorld
+  // @path: GET /
+  // @desc: display the 'hello world' message
+  const helloWorld = (req, res, next) => {
+    res.send("Hello World!");
+  };
+
+  // @name: greetPeople
+  // @path: GET /
+  // @desc: welcome people to the Uber-clone-backend-server
+  const greetPeople = (req, res, next) => {
+    res.send("Welcome to the Uber's backend server (cloned)");
+  };
+
+  // exports the server controllers
+  module.exports = { helloWorld, greetPeople };
+  ```
+- From now on, for any new server specific API implementation, we just need to perform the following steps
+  - Define a controller function for the respective API endpoint in the `./controllers/serverController.js` file and then export that controller function so that other files can use that later, if needed.
+  - Import the the server controllers in the `./routes/serverRouters.js` file and create the API endpoint there using the corresponding server specific controller defined in the `./controllers/serverController.js` file earlier.
