@@ -140,6 +140,7 @@
   ```
 
 - Create a routes directory named`routes` in the root and within the `./routes` create a file named `serverRouter.js` in which all the server specific API endpoints will be defined and then finally will be exposed to the other external files by exporting them all. Here is how the `./routes/sererRouter.js` file looks like at this point.
+
   ```jsx
   const express = require("express");
   const serverRouter = express.Router();
@@ -151,8 +152,11 @@
   // step 2: export the serverRouter
   module.exports = serverRouter;
   ```
+
   Here the `greetPople` is a controller defined in the `./controllers/serverController.js` file which will be created in the next step. The `serverController.js` will be holding all the required controller function definitions that are specific to the server only.
+
 - Create a directory name `controllers` in the root and inside of this `./controllers` directory create the `serverController.js` file which will actually expose all the controller definitions specific to the server only. Here is how the `./controllers/serverController.js` file looks like at this moment.
+
   ```jsx
   // @name: helloWorld
   // @path: GET /
@@ -171,6 +175,79 @@
   // exports the server controllers
   module.exports = { helloWorld, greetPeople };
   ```
+
 - From now on, for any new server specific API implementation, we just need to perform the following steps
   - Define a controller function for the respective API endpoint in the `./controllers/serverController.js` file and then export that controller function so that other files can use that later, if needed.
   - Import the the server controllers in the `./routes/serverRouters.js` file and create the API endpoint there using the corresponding server specific controller defined in the `./controllers/serverController.js` file earlier.
+
+## User Specific API Endpoints Implementation
+
+- Create a directory named `models` and in that `./models` directory create a file and name it `userModel.js`
+- Create a user schema in the `./models/userModel.js` file using `new mongoose.Schema()` constructor provided by the `mongoose` package and name it as `userSchema` .
+- Add custom methods
+  - `schema.methods` : it is a way in Mongoose to add custom Instance-Level functions to a Model. These functions add behavior to individual document and can be accessible on each documents or instances of the Model. In our case, two such methods will be added -
+    1. `userSchema.methods.generateAuthToken` : the purpose of this function is the generate a token using `jwt.sing(payload, secret)` method provided by the `jsonwebtoken` package. Here the `payload` contains user ID.
+    2. `userSchema.methods.comparePassword` : the purpose of this function is to compare a password provided with the old password using the `bcrypt.compare(password, oldPassword)` and return the decoded object with the user ID within it.
+  - `schema.static` : it is a way in Mongoose to add Model-Level custom function to a Model. In our case, such one method will be added -
+    1. `userSchema.statics.hashPassword` : the purpose of this function is to hash a password using the `bcrypt.hashPassword(password, saltingRound)` provided by the `bcrypt` package and return the hashed password.
+- Using the `userSchema` , create a user model named `userModel` with the help of the `mongoose.model(modelName, schema, collectionName)` . The followings are the explanation of each of the three arguments that the `mongoose.model(modelName, schema, collectionName)` method usually takes
+  - **`modelName`** (required) : a String being used internally by the Mongoose to specify the name of the Model. Mongoose uses the `modelName` and auto-pluralizes it to create the collection name, unless the collection name are not specified manually by passing the third argument which is `collectionName`
+  - `schema` (required): specify the structure of the model being created.
+  - `collectionName` (optional): a String which is used to specify the collection name.
+  Here is how the `./models/userModel.js` file looks like at this point:
+  ```jsx
+  const mongoose = require("mongoose");
+  const jwt = require("jsonwebtoken");
+  const bcrypt = require("bcrypt");
+
+  // define user schema
+  const userSchema = new mongoose.Schema({
+    fullName: {
+      firstName: {
+        type: String,
+        required: true,
+        minlength: [3, "First name must be at least 3 characters long"],
+      },
+      lastName: {
+        type: String,
+        minlength: [3, "Last name must be at least 3 characters long"],
+      },
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      minlength: [5, "Email must be at least 5 characters long"],
+    },
+    password: {
+      type: String,
+      required: true,
+      select: false,
+    },
+    socketId: {
+      type: String,
+    },
+  });
+
+  // add custom methods to the userSchema
+  userSchema.methods.generateAuthToken = () => {
+    const token = jwt.sign({ _id: this._id }, process.env.JWT_SECRET);
+    return token;
+  };
+
+  userSchema.methods.comparePassword = async (password) => {
+    return await bcrypt.compare(password, this.password);
+  };
+
+  userSchema.statics.hashPassword = async (password) => {
+    return await bcrypt.hash(password, 10);
+  };
+
+  // create user model
+  const userModel = mongoose.model("User", userSchema);
+
+  // export the user model
+  module.exports = userModel;
+  ```
+  Just to mention few more information about the `mongoose.Schema()` constructor. In `mongoose` , this `mongoose.Schema()` is used to define the structure of documents within a MongoDB collection. It takes two arguments - 1. Schema Definition Object (Required) and 2. Schema Options Object (Optional)
+  - **Schema Definition Object**
