@@ -2,8 +2,8 @@
 
 ## Backend Server Setup
 
-- Create a directory named `Backend` to store all the backend code and logic of this project
-- Navigate to the `Backend` directory, and considering this directory a the root, run in terminal `npm init -y` to initialize a node project as a result a `package.json` will be created in this directory.
+- Create a directory named `Backend` to store all the backend code and logic for this project
+- Navigate to the `Backend` directory, and considering this directory as the root, run `npm init -y` in terminal to initialize a node project as a result a `package.json` file will be created in the root directory.
   ```bash
   cd Backend
   npm init -y
