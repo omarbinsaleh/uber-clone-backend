@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectToDb = require('./db/db');
+const userRoutes = require('./routes/userRoutes');
+const serverRoutes = require('./routes/serverRoutes');
 
 // initialize the express app
 const app = express();
@@ -13,10 +15,8 @@ app.use(cors());
 connectToDb()
 
 // routes
-app.get('/', async (req, res) => {
-   console.log('Hello world')
-   res.send("Hello world!")
-})
+app.get('/', serverRoutes)
+app.use('/user', userRoutes);
 
 // export the app instance
 module.exports = app;
