@@ -5,18 +5,18 @@ const connectToDb = require('./db/db');
 const userRoutes = require('./routes/userRoutes');
 const serverRoutes = require('./routes/serverRoutes');
 
-// initialize the express app
+// step 1: initialize the express app
 const app = express();
 
-// application level middlewares configuration
+// step 2: application level middlewares configuration
 app.use(cors());
 
-// connect to the database
+// step 3: connect to the database
 connectToDb()
 
-// routes
+// step 4: define routes
 app.get('/', serverRoutes)
 app.use('/user', userRoutes);
 
-// export the app instance
+// step 5: export the app instance
 module.exports = app;

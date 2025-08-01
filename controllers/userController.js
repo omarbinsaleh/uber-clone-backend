@@ -1,4 +1,5 @@
 const userModel = require('../models/userModels.js');
+const userServices = require('../services/userService.js');
 
 // @name: registerUser
 // @path: POST /user/register
@@ -11,7 +12,12 @@ const registerUser = async (req, res, next) => {
 // @path: GET /user
 // @desc: retrive all the users from the DB;
 const findUsers = async (req, res, next) => {
-   res.send({user: 'all users has been returned successfully'})
+   try {
+      res.send({user: 'all users has been returned successfully'})
+      next()
+   } catch (error) {
+      res.status(500).json({message: error.message})
+   }
 }
 
 
