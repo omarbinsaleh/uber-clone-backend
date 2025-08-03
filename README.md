@@ -182,15 +182,18 @@
 
 ## User Specific API Endpoints Implementation
 
-- Create a directory named `models` and in that `./models` directory create a file and name it `userModel.js`
-- Create a user schema in the `./models/userModel.js` file using `new mongoose.Schema()` constructor provided by the `mongoose` package and name it as `userSchema` .
-- Add custom methods
+- Create a directory named `models` in the root and in that `./models` directory create a file and name it `userModel.js`
+- **Creating a Schema for User Model:**
+  \*\*\*\*Create a user schema in the `./models/userModel.js` file using `new mongoose.Schema()` constructor provided by the `mongoose` package and name it as `userSchema` . This `userSchema` will be used to create the user model.
+- **Add custom methods**
+  There are two ways in mongoose to add custom methods to a Mongoose Model.
   - `schema.methods` : it is a way in Mongoose to add custom Instance-Level functions to a Model. These functions add behavior to individual document and can be accessible on each documents or instances of the Model. In our case, two such methods will be added -
     1. `userSchema.methods.generateAuthToken` : the purpose of this function is the generate a token using `jwt.sing(payload, secret)` method provided by the `jsonwebtoken` package. Here the `payload` contains user ID.
-    2. `userSchema.methods.comparePassword` : the purpose of this function is to compare a password provided with the old password using the `bcrypt.compare(password, oldPassword)` and return the decoded object with the user ID within it.
+    2. `userSchema.methods.comparePassword` : the purpose of this function is to compare a password provided with the old password using the `bcrypt.compare(data, encrypted)` and return `Boolean`.
   - `schema.static` : it is a way in Mongoose to add Model-Level custom function to a Model. In our case, such one method will be added -
     1. `userSchema.statics.hashPassword` : the purpose of this function is to hash a password using the `bcrypt.hashPassword(password, saltingRound)` provided by the `bcrypt` package and return the hashed password.
-- Using the `userSchema` , create a user model named `userModel` with the help of the `mongoose.model(modelName, schema, collectionName)` . The followings are the explanation of each of the three arguments that the `mongoose.model(modelName, schema, collectionName)` method usually takes
+- **Creating the User Model:**
+  Using the `userSchema` , create a user model named `userModel` with the help of the `mongoose.model(modelName, schema, collectionName)` . The followings are the explanation of each of the three arguments that the `mongoose.model(modelName, schema, collectionName)` method usually takes
   - **`modelName`** (required) : a String being used internally by the Mongoose to specify the name of the Model. Mongoose uses the `modelName` and auto-pluralizes it to create the collection name, unless the collection name are not specified manually by passing the third argument which is `collectionName`
   - `schema` (required): specify the structure of the model being created.
   - `collectionName` (optional): a String which is used to specify the collection name.
@@ -249,5 +252,106 @@
   // export the user model
   module.exports = userModel;
   ```
-  Just to mention few more information about the `mongoose.Schema()` constructor. In `mongoose` , this `mongoose.Schema()` is used to define the structure of documents within a MongoDB collection. It takes two arguments - 1. Schema Definition Object (Required) and 2. Schema Options Object (Optional)
-  - **Schema Definition Object**
+- Configure the user specific routes in the `./app.js` file.
+  ```jsx
+  require("dotenv").config();
+  const express = reuire("express");
+  const cors = require("cors");
+  const connectToDb = require("./db/bd.js");
+  const serverRoutes = require("./routes/serverRouter.js");
+  const userRoutes = require("./routes/userRouter.js");
+
+  // step 1: initialize the express app
+  const app = express();
+
+  // step 2: application level middlewares configuration
+  app.use(cors());
+
+  // step 3: connect to the database
+  connectToDb();
+
+  // step 4: routes configuration
+  app.get("/", serverRoutes); // server specific routes
+  app.use("/user", userRoutes); // user specific routes
+
+  // step 5: export the app instance
+  module.exports = app;
+  ```
+- Create a file named `userRouter.js` in the `./routes/` directory and define all API end point specific to user in that `./routes/userRouter.js` file and at the end make them exposed to other files.
+  ```jsx
+  const express = require("express");
+  const userRouter = express.Router();
+  const userController = require("./controllers/userController.js");
+
+  // define user specific API end point
+  userRouter.post("/register", userController.registerUser);
+  userRouter.get("/", userController.getAllUsers);
+  userRouter.get("/profile", userController.getUserProfile);
+
+  // export user router
+  module.exports = userRouter;
+  ```
+- Create a fine named `userController.js` in the `./controllers/` directory.
+- Define all the user specific controllers in the `./controllers/userController.js` file and export them all at the end from this file.
+
+### `registerUser` Controller Implementation
+
+### Mongoose Schema
+
+Just to mention few more information about the `mongoose.Schema()` constructor. In `mongoose` , this `mongoose.Schema()` is used to define the structure of documents within a MongoDB collection. It takes two arguments - 1. Schema Definition Object (Required) and 2. Schema Options Object (Optional)
+
+- **Schema Definition Object (required):**
+  It is an object that defines the fields (keys) and their data types, validation rules and default value, etc.
+  **Schema Field Options (Key-Value Pairs):**
+  Each field in your schema can be defined like
+  ```jsx
+  fieldName:{
+  	type: String,
+  	required: true,
+  	default:'value',
+  	unique: true,
+  	enum: ['Option1', 'Option2'],
+  	min: 0,
+  	max: 100,
+  	minlength: 5,
+  	maxlength: 225,
+  	match: /regex/,
+  	validation: function(val) {},
+  	get: function(val) {},
+  	set: function(val) {},
+  	alias: 'otherName',
+  	immutable: true,
+  	select: false,
+  	index: true,
+  	sparse: true,
+  	lowercase: true,
+  	uppercase: true,
+  	trim: true
+  }
+  ```
+  Core Options:
+  | Options    | Type                                                                                                                   | Description                                            |
+  | ---------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+  | `type`     | `String` , `Number` , `Boolean` , `Date` , `Buffer` , `ObjectId` , `Array` , `Map` , `Mixed` , `Schema.Types.Whatever` | Data type of the field                                 |
+  | `required` | `Boolean` or `[true, ‘message’]`                                                                                       | Makes the field mandatory                              |
+  | `default`  | `Any` or `Function`                                                                                                    | Default value if not provided                          |
+  | `unique`   | `Boolean`                                                                                                              | Ensures uniqueness in the collection                   |
+  | `index`    | `Boolean` or `Object`                                                                                                  | Creates an index on the field                          |
+  | `sparse`   | `Boolean`                                                                                                              | Allows indexing only documents where the fields exists |
+- **Schema Options Object (optional):**
+  It defines how the schema behaves. Bellow is a comprehensive list of the most commonly used and powerful options that we can specify.
+  | Options                | Type      | Description                                                                                  |
+  | ---------------------- | --------- | -------------------------------------------------------------------------------------------- |
+  | `timestamp`            | `Boolean` | Automatically adds `createdAt` and `updatedAt` fields                                        |
+  | `versionKey`           | `Boolean` | Enables/disables or rename the `_v` version field                                            |
+  | `collection`           | `String`  | Manually sets the MongoDB collection name                                                    |
+  | `strict`               | `Boolean` | Controls whether values not in the schema are saved or not ( `true` = ignore unknown fields) |
+  | `strictQuery`          | `Boolean` | Controls strict mode for queries                                                             |
+  | `toObject`             | `Object`  | Configuration for `.toObject()` (e.g. virtual, getters)                                      |
+  | `toJSON`               | `Object`  | Configuration for `.toJSON()` (e.g. virtual, getters)                                        |
+  | `minimize`             | `Boolean` | Removes empty object ( `{}` ) by default ( `true` )                                          |
+  | `id`                   | `Boolean` | Adds virtual `id` field that is a string version of `_id`                                    |
+  | `_id`                  | `Boolean` | Controls automatic creation of `_id` field ( useful for subdocuments )                       |
+  | `validationBeforeSve`  | `Boolean` | Set to `false` to skip validation before `save()`                                            |
+  | `timestamps.createAt`  | `String`  | Specify custom field name for `createdAt`                                                    |
+  | `timestamps.updatedAt` | `String`  | Specify custom field name for `updatedAt`                                                    |
