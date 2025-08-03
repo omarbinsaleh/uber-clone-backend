@@ -194,10 +194,12 @@
     1. `userSchema.statics.hashPassword` : the purpose of this function is to hash a password using the `bcrypt.hashPassword(password, saltingRound)` provided by the `bcrypt` package and return the hashed password.
 - **Creating the User Model:**
   Using the `userSchema` , create a user model named `userModel` with the help of the `mongoose.model(modelName, schema, collectionName)` . The followings are the explanation of each of the three arguments that the `mongoose.model(modelName, schema, collectionName)` method usually takes
+
   - **`modelName`** (required) : a String being used internally by the Mongoose to specify the name of the Model. Mongoose uses the `modelName` and auto-pluralizes it to create the collection name, unless the collection name are not specified manually by passing the third argument which is `collectionName`
   - `schema` (required): specify the structure of the model being created.
   - `collectionName` (optional): a String which is used to specify the collection name.
-  Here is how the `./models/userModel.js` file looks like at this point:
+    Here is how the `./models/userModel.js` file looks like at this point:
+
   ```jsx
   const mongoose = require("mongoose");
   const jwt = require("jsonwebtoken");
@@ -252,7 +254,9 @@
   // export the user model
   module.exports = userModel;
   ```
+
 - Configure the user specific routes in the `./app.js` file.
+
   ```jsx
   require("dotenv").config();
   const express = reuire("express");
@@ -277,7 +281,9 @@
   // step 5: export the app instance
   module.exports = app;
   ```
+
 - Create a file named `userRouter.js` in the `./routes/` directory and define all API end point specific to user in that `./routes/userRouter.js` file and at the end make them exposed to other files.
+
   ```jsx
   const express = require("express");
   const userRouter = express.Router();
@@ -291,10 +297,92 @@
   // export user router
   module.exports = userRouter;
   ```
+
 - Create a fine named `userController.js` in the `./controllers/` directory.
 - Define all the user specific controllers in the `./controllers/userController.js` file and export them all at the end from this file.
 
 ### `registerUser` Controller Implementation
+
+`registerUser` is a controller function whos purpose is to create a new user. The following is how this controller is implemented step by step:
+
+- Create a directory in the root and name it as `services` . Then create a file in the `./services` directory and name that file `userServices.js` .
+- Create a service named `createUser` in the `./services/userServices.js` file whose purpose is to create a new user in the MongoDB database only and return the new user.
+  ```jsx
+  const userModel = require("../models/userModel.js");
+
+  // @name: createUser
+  // @desc: create a new user in the MongoDB database
+  const createUser = async ({ firstName, lastName, email, password }) => {
+    if (!firstName || !lastName || !email || !password) {
+      throw new Error("All fields are required");
+    }
+
+    const user = await userModel.create({
+      fullName: { firstName, lastName },
+      email,
+      password,
+    });
+
+    return user;
+  };
+
+  module.exports = { createUser };
+  ```
+- Extract data (`fullName`, `email`, `password`) from the request body `req.body`
+- Perform an error validation to check to see -
+  - if the `email` is a valid email or not?
+  - if the `firstName` is at least 3 character long or not?
+  - if the `password` is at least 6 character long or not?
+- If something goes wrong in the error validation, terminate the request-response cycle and send a response to the client with the status code 400 and the errors
+- Hash the password extracted from the `req.body`
+- Create a new user using the `createUser()` method defined in the `./services/userService.js` file
+- Generate a token for authentication
+- Send the `token` and the `user` to client with the status code 201
+- If anything goes wrong or error happens in the process, then catch and handle the error and send response to the client with proper status code and message.
+  Here is how the `./controllers/userController.js` file looks like at this point:
+  ```jsx
+  const { validationResult } = require("express-validator");
+  const userModel = require("../models/userModels.js");
+  const userServices = require("../services/userService.js");
+
+  // @name: registerUser
+  // @path: POST /user/register
+  // @desc: Create a new user
+  const registerUser = async (req, res, next) => {
+    try {
+      // step 1: extract data from the request body
+      const { fullName, email, password } = req.body;
+
+      // step 2: handle firstName, email and password validation errors
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      // step 3: hash the password
+      const hashedPassword = await userModel.hashedPassword(password);
+
+      // step 4: create a new user
+      const user = await userServices.createUser({
+        firstName: fullName.firstName,
+        lastName: fullName.lastName,
+        email,
+        password: hashedPassword,
+      });
+
+      // step 5: generate token
+      const token = user.generateAuthToken();
+
+      // step 6: send a success response to the client
+      res.status(201).json({ token, user });
+    } catch (error) {
+      res.status(500).json({ error, message: error.message });
+    }
+  };
+
+  // export the user controllers
+  module.exports = { createUser };
+  ```
 
 ### Mongoose Schema
 
@@ -330,28 +418,28 @@ Just to mention few more information about the `mongoose.Schema()` constructor. 
   }
   ```
   Core Options:
-  | Options    | Type                                                                                                                   | Description                                            |
+  | Options | Type | Description |
   | ---------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-  | `type`     | `String` , `Number` , `Boolean` , `Date` , `Buffer` , `ObjectId` , `Array` , `Map` , `Mixed` , `Schema.Types.Whatever` | Data type of the field                                 |
-  | `required` | `Boolean` or `[true, ‘message’]`                                                                                       | Makes the field mandatory                              |
-  | `default`  | `Any` or `Function`                                                                                                    | Default value if not provided                          |
-  | `unique`   | `Boolean`                                                                                                              | Ensures uniqueness in the collection                   |
-  | `index`    | `Boolean` or `Object`                                                                                                  | Creates an index on the field                          |
-  | `sparse`   | `Boolean`                                                                                                              | Allows indexing only documents where the fields exists |
+  | `type` | `String` , `Number` , `Boolean` , `Date` , `Buffer` , `ObjectId` , `Array` , `Map` , `Mixed` , `Schema.Types.Whatever` | Data type of the field |
+  | `required` | `Boolean` or `[true, ‘message’]` | Makes the field mandatory |
+  | `default` | `Any` or `Function` | Default value if not provided |
+  | `unique` | `Boolean` | Ensures uniqueness in the collection |
+  | `index` | `Boolean` or `Object` | Creates an index on the field |
+  | `sparse` | `Boolean` | Allows indexing only documents where the fields exists |
 - **Schema Options Object (optional):**
   It defines how the schema behaves. Bellow is a comprehensive list of the most commonly used and powerful options that we can specify.
-  | Options                | Type      | Description                                                                                  |
+  | Options | Type | Description |
   | ---------------------- | --------- | -------------------------------------------------------------------------------------------- |
-  | `timestamp`            | `Boolean` | Automatically adds `createdAt` and `updatedAt` fields                                        |
-  | `versionKey`           | `Boolean` | Enables/disables or rename the `_v` version field                                            |
-  | `collection`           | `String`  | Manually sets the MongoDB collection name                                                    |
-  | `strict`               | `Boolean` | Controls whether values not in the schema are saved or not ( `true` = ignore unknown fields) |
-  | `strictQuery`          | `Boolean` | Controls strict mode for queries                                                             |
-  | `toObject`             | `Object`  | Configuration for `.toObject()` (e.g. virtual, getters)                                      |
-  | `toJSON`               | `Object`  | Configuration for `.toJSON()` (e.g. virtual, getters)                                        |
-  | `minimize`             | `Boolean` | Removes empty object ( `{}` ) by default ( `true` )                                          |
-  | `id`                   | `Boolean` | Adds virtual `id` field that is a string version of `_id`                                    |
-  | `_id`                  | `Boolean` | Controls automatic creation of `_id` field ( useful for subdocuments )                       |
-  | `validationBeforeSve`  | `Boolean` | Set to `false` to skip validation before `save()`                                            |
-  | `timestamps.createAt`  | `String`  | Specify custom field name for `createdAt`                                                    |
-  | `timestamps.updatedAt` | `String`  | Specify custom field name for `updatedAt`                                                    |
+  | `timestamp` | `Boolean` | Automatically adds `createdAt` and `updatedAt` fields |
+  | `versionKey` | `Boolean` | Enables/disables or rename the `_v` version field |
+  | `collection` | `String` | Manually sets the MongoDB collection name |
+  | `strict` | `Boolean` | Controls whether values not in the schema are saved or not ( `true` = ignore unknown fields) |
+  | `strictQuery` | `Boolean` | Controls strict mode for queries |
+  | `toObject` | `Object` | Configuration for `.toObject()` (e.g. virtual, getters) |
+  | `toJSON` | `Object` | Configuration for `.toJSON()` (e.g. virtual, getters) |
+  | `minimize` | `Boolean` | Removes empty object ( `{}` ) by default ( `true` ) |
+  | `id` | `Boolean` | Adds virtual `id` field that is a string version of `_id` |
+  | `_id` | `Boolean` | Controls automatic creation of `_id` field ( useful for subdocuments ) |
+  | `validationBeforeSve` | `Boolean` | Set to `false` to skip validation before `save()` |
+  | `timestamps.createAt` | `String` | Specify custom field name for `createdAt` |
+  | `timestamps.updatedAt` | `String` | Specify custom field name for `updatedAt` |

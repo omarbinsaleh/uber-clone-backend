@@ -1,3 +1,4 @@
+const { validationResult } = require('express-validator');
 const userModel = require('../models/userModels.js');
 const userServices = require('../services/userService.js');
 
@@ -5,7 +6,35 @@ const userServices = require('../services/userService.js');
 // @path: POST /user/register
 // @desc: Create a new user
 const registerUser = async (req, res, next) => {
+   try {
+      // step 1: extract data from the request body
+      const { fullName, email, password } = req.body;
 
+      // step 2: handle firstName, email and password validation errors
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+         return res.status(400).json({ errors: errors.array() })
+      }
+
+      // step 3: hash the password
+      const hashedPassword = await userModel.hashedPassword(password);
+
+      // step 4: create a new user 
+      const user = await userServices.createUser({
+         firstName: fullName.firstName,
+         lastName: fullName.lastName,
+         email,
+         password: hashedPassword
+      });
+
+      // step 5: generate token
+      const token = user.generateAuthToken();
+
+      // step 6: send a success response to the client
+      res.status(201).json({ token, user });
+   } catch (error) {
+      res.status(500).json({ error, message: error.message });
+   }
 }
 
 // @name: findUsers
@@ -13,10 +42,10 @@ const registerUser = async (req, res, next) => {
 // @desc: retrive all the users from the DB;
 const findUsers = async (req, res, next) => {
    try {
-      res.send({user: 'all users has been returned successfully'})
+      res.send({ user: 'all users has been returned successfully' })
       next()
    } catch (error) {
-      res.status(500).json({message: error.message})
+      res.status(500).json({ message: error.message })
    }
 }
 
