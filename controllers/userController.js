@@ -49,6 +49,40 @@ const findUsers = async (req, res, next) => {
    }
 }
 
+// @name: loginUser
+// @path: POST /user/login
+// @desc: allow an existing user to login 
+const loginUser = async (req, res, next) => {
+   // step 1: extract data from the request body
+   const { email, password } = req.body;
+
+   // step 2: email and password error validation
+   const errors = validationResult(req);
+   if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+   }
+
+   // step 3: find user in the database with the email
+   const user = await userModel.findOne({ email }).select('+password');
+
+   // step 4: check if the user already exists or not
+   if (!user) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+   };
+
+   // step 5: check if the password is matching
+   const isMatch = await user.comparePassword(password);
+   if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+   };
+
+   // step 6: generate the authentication token
+   const token = await user.generateToken();
+
+   // step 7: send the user and the token to the font end
+   res.status(200).json({ user, token, message: 'User loggedin successfully' });
+};
+
 
 // exports user's controllers
-module.exports = { registerUser, findUsers };
+module.exports = { registerUser, findUsers, loginUser };
