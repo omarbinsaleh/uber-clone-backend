@@ -677,7 +677,7 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
 - Using the `blacklistTokenSchema`, create a model and export it.
 
 Here is how the `./models/blacklistTokenModel.js` file looks like at this point
-  ```js
+  ```jsx
   // import dependencies
   const mongoose = require('mongoose');
 
@@ -700,6 +700,21 @@ Here is how the `./models/blacklistTokenModel.js` file looks like at this point
 
   // exports the blacklistTokenModel
   module.exports = blacklistTokenModel;
+  ```
+
+
+### `logoutUser` Controller Implementation
+
+`logoutUser` controller is a controller function that handle all the functionality specific to logout user API end point. The following are how the controller are implemented
+
+- Create a function named `logoutUser` in the `./controllers/userControllers.js` file
+- In the function body, Clear token from the cookies using `req.clearCookie(tokenName)`
+- Save the token in the database and marks the token as blacklisted token
+- Send a response to the front end with a success message and the blacklisted token
+- If something goes wrong in the process, catch the error and send an error response to the front end with the error and an error message.
+  Here is how the `./controllers/userController.js` file looks like at this point:
+  ```jsx
+
   ```
 
 
