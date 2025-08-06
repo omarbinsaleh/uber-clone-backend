@@ -1,5 +1,6 @@
 const { validationResult } = require('express-validator');
 const userModel = require('../models/userModels.js');
+const blacklistTokenModel = require('../models/blacklistTokenModel.js');
 const userServices = require('../services/userService.js');
 
 // @name: registerUser
@@ -98,9 +99,31 @@ const loginUser = async (req, res, next) => {
 // @desc: return profile information of a logged-in user
 // @auth: Omar Bin Saleh
 const getUserProfile = async (req, res, next) => {
-   res.status(200).json({user: req.user, message: 'User profile is returned'});
-}
+   res.status(200).json({ user: req.user, message: 'User profile is returned' });
+};
+
+// @name: logoutUser
+// @path: GET /user/logout
+// @midd: authUser > logoutUser
+// @desc: allow user to logout of the system
+// @auth: Omar Bin Saleh
+const logoutUser = async (req, res, next) => {
+   try {
+      // step 1: clear the token from the cookies
+      res.crearCookie('token');
+
+      // step 2: mark token as black listed token
+      const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
+      const blacklistToken = await blacklistTokenModel({ token });
+
+      // step 3: send a response to the front end with the black listed token
+      res.status(200).json({message: 'User logged out successfully', blacklistToken});
+   } catch (error) {
+      res.status(401).json({message: 'Unauthorized access or Something went wrong'})
+   }
+
+};
 
 
 // exports user's controllers
-module.exports = { registerUser, getAllUsers, loginUser, getUserProfile };
+module.exports = { registerUser, getAllUsers, loginUser, getUserProfile, logoutUser };
