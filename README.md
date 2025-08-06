@@ -608,6 +608,7 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
 - Now find the user from the database using the user ID found in the decoded object.
 - Add the user information in the `request` object with a key `user` so that the other middleware or controller function that gets execute after this middleware can access the user information by `req.user` .
   Here is how the `./middleware/authMiddleware.js` file looks like at this point:
+
   ```jsx
   const userModel = require("../models/userModel.js");
   const jwt = require("jsonwebtoken");
