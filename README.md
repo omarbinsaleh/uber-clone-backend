@@ -239,7 +239,9 @@
 
   // add custom methods to the userSchema
   userSchema.methods.generateAuthToken = () => {
-    const token = jwt.sign({ _id: this._id }, process.env.JWT_SECRET, {expiresIn: '24h'});
+    const token = jwt.sign({ _id: this._id }, process.env.JWT_SECRET, {
+      expiresIn: "24h",
+    });
     return token;
   };
 
@@ -381,7 +383,7 @@
       const token = user.generateAuthToken();
 
       // step 6: set the token in the cookies
-      res.cookie('token', token);
+      res.cookie("token", token);
 
       // step 6: send a success response to the client
       res.status(201).json({ token, user });
@@ -447,7 +449,7 @@
       const token = user.generateAuthToken();
 
       // step 6: set the token in the cookies
-      res.cookie('token', token);
+      res.cookie("token", token);
 
       // step 7: send a success response to the client
       res.status(201).json({ token, user });
@@ -487,7 +489,7 @@
     const token = await user.generateToken();
 
     // step 7: set the token in the cookies
-    res.cookie('token', token);
+    res.cookie("token", token);
 
     // step 8: send the user and the token to the font end
     res
@@ -629,7 +631,7 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
   ```jsx
   const userModel = require("../models/userModel.js");
   const jwt = require("jsonwebtoken");
-  const blacklistTokenModel = require('../mdoels/blacklistTokenModel.js');
+  const blacklistTokenModel = require("../mdoels/blacklistTokenModel.js");
 
   // @name: authUser
   // @desc: Authenticate a user by using the token validation
@@ -643,9 +645,9 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
     }
 
     // step 2: check if the token is black listed
-    const isBlackListed = await blacklistTokenModel.findOne({token});
+    const isBlackListed = await blacklistTokenModel.findOne({ token });
     if (isBlackListed) {
-      return res.status(401).json({message: "Unauthorized access"});
+      return res.status(401).json({ message: "Unauthorized access" });
     }
 
     try {
@@ -669,6 +671,7 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
   // exports all auth middleware
   module.exports = { authUser };
   ```
+
 ### `blacklistTokenModel` Model Implementation
 
 `blacklistTokenModel` is a model to store all the black listed token in the databas. When a user logout, the logout API will take the token, which the user got after successfull login or registeration as a new user, and mark to the token in the database as a black listed token. The following are the step by step implementation of the model
@@ -676,32 +679,35 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
 - Create a file named `blacklistTokenModel.js` in the `./mdodels` directory. In the `./models/blacklistTokenModel.js` file, create the schema for a blacklist token in such way that the blacklist token should automatically be deleted from the database after 24 hours from their creation.
 - Using the `blacklistTokenSchema`, create a model and export it.
 
-Here is how the `./models/blacklistTokenModel.js` file looks like at this point
+  Here is how the `./models/blacklistTokenModel.js` file looks like at this point
+
   ```jsx
   // import dependencies
-  const mongoose = require('mongoose');
+  const mongoose = require("mongoose");
 
   // define schema for blacklist token
   const blacklistTokenSchema = new mongoose.Schema({
     token: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
     },
     createAt: {
       type: Date,
       default: Date.now,
-      expires: 86400 // 24 hours in seconds
-    }
+      expires: 86400, // 24 hours in seconds
+    },
   });
 
   // create model for blacklist token
-  const blacklistTokenModel = mongoose.model('BlacklistTokens', blacklistTokenSchema);
+  const blacklistTokenModel = mongoose.model(
+    "BlacklistTokens",
+    blacklistTokenSchema
+  );
 
   // exports the blacklistTokenModel
   module.exports = blacklistTokenModel;
   ```
-
 
 ### `logoutUser` Controller Implementation
 
@@ -713,10 +719,151 @@ Here is how the `./models/blacklistTokenModel.js` file looks like at this point
 - Send a response to the front end with a success message and the blacklisted token
 - If something goes wrong in the process, catch the error and send an error response to the front end with the error and an error message.
   Here is how the `./controllers/userController.js` file looks like at this point:
+
   ```jsx
+  const { validationResult } = require("express-validator");
+  const userModel = require("../models/userModels.js");
+  const blacklistTokenModel = require("../models/blacklistTokenModel.js");
+  const userServices = require("../services/userService.js");
 
+  // @name: registerUser
+  // @path: POST /user/register
+  // @desc: Create a new user
+  // @auth: Omar Bin Saleh
+  const registerUser = async (req, res, next) => {
+    try {
+      // step 1: extract data from the request body
+      const { fullName, email, password } = req.body;
+
+      // step 2: handle firstName, email and password validation errors
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      // step 3: hash the password
+      const hashedPassword = await userModel.hashedPassword(password);
+
+      // step 4: create a new user
+      const user = await userServices.createUser({
+        firstName: fullName.firstName,
+        lastName: fullName.lastName,
+        email,
+        password: hashedPassword,
+      });
+
+      // step 5: generate token
+      const token = user.generateAuthToken();
+
+      // step 6: set the token in the cookies
+      res.cookie("token", token);
+
+      // step 6: send a success response to the client
+      res.status(201).json({ token, user });
+    } catch (error) {
+      res.status(500).json({ error, message: error.message });
+    }
+  };
+
+  // @name: findUsers
+  // @path: GET /user
+  // @desc: retrive all the users from the DB;
+  // @auth: Omar Bin Saleh
+  const getAllUsers = async (req, res, next) => {
+    try {
+      res.send({ user: "all users has been returned successfully" });
+      next();
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  };
+
+  // @name: loginUser
+  // @path: POST /user/login
+  // @desc: allow an existing user to login
+  // @auth: Omar Bin Saleh
+  const loginUser = async (req, res, next) => {
+    // step 1: extract data from the request body
+    const { email, password } = req.body;
+
+    // step 2: email and password error validation
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    // step 3: find user in the database with the email
+    const user = await userModel.findOne({ email }).select("+password");
+
+    // step 4: check if the user already exists or not
+    if (!user) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // step 5: check if the password is matching
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // step 6: generate the authentication token
+    const token = await user.generateToken();
+
+    // step 7: set the token in the cookies
+    res.cookie("token", token);
+
+    // step 8: send the user and the token to the font end
+    res
+      .status(200)
+      .json({ user, token, message: "User loggedin successfully" });
+  };
+
+  // @name: getUserProfile
+  // @path: GET /user/profile
+  // @midd: authUser > getUserProfile
+  // @desc: return profile information of a logged-in user
+  // @auth: Omar Bin Saleh
+  const getUserProfile = async (req, res, next) => {
+    res
+      .status(200)
+      .json({ user: req.user, message: "User profile is returned" });
+  };
+
+  // @name: logoutUser
+  // @path: GET /user/logout
+  // @midd: authUser > logoutUser
+  // @desc: allow user to logout of the system
+  // @auth: Omar Bin Saleh
+  const logoutUser = async (req, res, next) => {
+    try {
+      // step 1: clear the token from the cookies
+      res.crearCookie("token");
+
+      // step 2: mark token as black listed token
+      const token =
+        req.cookies?.token || req.headers.authorization?.split(" ")[1];
+      const blacklistToken = await blacklistTokenModel({ token });
+
+      // step 3: send a response to the front end with the black listed token
+      res
+        .status(200)
+        .json({ message: "User logged out successfully", blacklistToken });
+    } catch (error) {
+      res
+        .status(401)
+        .json({ message: "Unauthorized access or Something went wrong" });
+    }
+  };
+
+  // exports user's controllers
+  module.exports = {
+    registerUser,
+    getAllUsers,
+    loginUser,
+    getUserProfile,
+    logoutUser,
+  };
   ```
-
 
 ### Mongoose Schema
 
@@ -726,40 +873,43 @@ Just to mention few more information about the `mongoose.Schema()` constructor. 
   It is an object that defines the fields (keys) and their data types, validation rules and default value, etc.
   **Schema Field Options (Key-Value Pairs):**
   Each field in your schema can be defined like
-  ```jsx
-  fieldName:{
-  	type: String,
-  	required: true,
-  	default:'value',
-  	unique: true,
-  	enum: ['Option1', 'Option2'],
-  	min: 0,
-  	max: 100,
-  	minlength: 5,
-  	maxlength: 225,
-  	match: /regex/,
-  	validation: function(val) {},
-  	get: function(val) {},
-  	set: function(val) {},
-  	alias: 'otherName',
-  	immutable: true,
-  	select: false,
-  	index: true,
-  	sparse: true,
-  	lowercase: true,
-  	uppercase: true,
-  	trim: true
-  }
-  ```
-  Core Options:
-  | Options | Type | Description |
-  | ---------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-  | `type` | `String` , `Number` , `Boolean` , `Date` , `Buffer` , `ObjectId` , `Array` , `Map` , `Mixed` , `Schema.Types.Whatever` | Data type of the field |
-  | `required` | `Boolean` or `[true, ‘message’]` | Makes the field mandatory |
-  | `default` | `Any` or `Function` | Default value if not provided |
-  | `unique` | `Boolean` | Ensures uniqueness in the collection |
-  | `index` | `Boolean` or `Object` | Creates an index on the field |
-  | `sparse` | `Boolean` | Allows indexing only documents where the fields exists |
+
+```jsx
+fieldName:{
+	type: String,
+	required: true,
+	default:'value',
+	unique: true,
+	enum: ['Option1', 'Option2'],
+	min: 0,
+	max: 100,
+	minlength: 5,
+	maxlength: 225,
+	match: /regex/,
+	validation: function(val) {},
+	get: function(val) {},
+	set: function(val) {},
+	alias: 'otherName',
+	immutable: true,
+	select: false,
+	index: true,
+	sparse: true,
+	lowercase: true,
+	uppercase: true,
+	trim: true
+}
+```
+
+Core Options:
+| Options | Type | Description |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `type` | `String` , `Number` , `Boolean` , `Date` , `Buffer` , `ObjectId` , `Array` , `Map` , `Mixed` , `Schema.Types.Whatever` | Data type of the field |
+| `required` | `Boolean` or `[true, ‘message’]` | Makes the field mandatory |
+| `default` | `Any` or `Function` | Default value if not provided |
+| `unique` | `Boolean` | Ensures uniqueness in the collection |
+| `index` | `Boolean` or `Object` | Creates an index on the field |
+| `sparse` | `Boolean` | Allows indexing only documents where the fields exists |
+
 - **Schema Options Object (optional):**
   It defines how the schema behaves. Bellow is a comprehensive list of the most commonly used and powerful options that we can specify.
   | Options | Type | Description |
