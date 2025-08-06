@@ -31,6 +31,9 @@ const registerUser = async (req, res, next) => {
       // step 5: generate token
       const token = user.generateAuthToken();
 
+      // step 6: set the token in the cookies
+      res.cookie('token', token);
+
       // step 6: send a success response to the client
       res.status(201).json({ token, user });
    } catch (error) {
@@ -82,7 +85,10 @@ const loginUser = async (req, res, next) => {
    // step 6: generate the authentication token
    const token = await user.generateToken();
 
-   // step 7: send the user and the token to the font end
+   // step 7: set the token in the cookies
+   res.cookie('token', token);
+
+   // step 8: send the user and the token to the font end
    res.status(200).json({ user, token, message: 'User loggedin successfully' });
 };
 

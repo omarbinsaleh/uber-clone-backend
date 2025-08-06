@@ -12,7 +12,7 @@
 - Install the following important packages
 
   ```bash
-  npm i express cors dotenv mongodb mongoose
+  npm i express cors dotenv mongodb mongoose jsonwebtoken bcrypt express-validator
   ```
 
   Here is how the `package.json` file look like after these basic changes
@@ -32,9 +32,12 @@
     "license": "ISC",
     "description": "",
     "dependencies": {
+      "bcrypt": "^6.0.0",
       "cors": "^2.8.5",
       "dotenv": "^17.2.1",
       "express": "^5.1.0",
+      "express-validator": "^7.2.1",
+      "jsonwebtoken": "^9.0.2",
       "mongodb": "^6.18.0",
       "mongoose": "^8.17.0"
     }
@@ -236,7 +239,7 @@
 
   // add custom methods to the userSchema
   userSchema.methods.generateAuthToken = () => {
-    const token = jwt.sign({ _id: this._id }, process.env.JWT_SECRET);
+    const token = jwt.sign({ _id: this._id }, process.env.JWT_SECRET, {expiresIn: '24h'});
     return token;
   };
 
@@ -339,6 +342,7 @@
 - Hash the password extracted from the `req.body`
 - Create a new user using the `createUser()` method defined in the `./services/userService.js` file
 - Generate a token for authentication
+- set the token in the cookies using the `res.cookie(tokenName, token)` method.
 - Send the `token` and the `user` to client with the status code 201
 - If anything goes wrong or error happens in the process, then catch and handle the error and send response to the client with proper status code and message.
   Here is how the `./controllers/userController.js` file looks like at this point:
@@ -376,6 +380,9 @@
       // step 5: generate token
       const token = user.generateAuthToken();
 
+      // step 6: set the token in the cookies
+      res.cookie('token', token);
+
       // step 6: send a success response to the client
       res.status(201).json({ token, user });
     } catch (error) {
@@ -401,6 +408,7 @@
 - Compare both passwords and check if the `password` is matching with that in the database which `user.password` .
 - In case by any chance if both the passwords do not match with each other, then terminate the request- response cycle and send an error message ‘Invalid email or password’ with the status code of 401.
 - Generate a token for authentication
+- Set the token in the cookies using `res.cookie(tokenName, token)` method.
 - Then send user information and the token to the front end with the status code 200 and a success message.
   Here is how the `./controllers/userController.js` file looks like at this point
 
@@ -438,7 +446,10 @@
       // step 5: generate token
       const token = user.generateAuthToken();
 
-      // step 6: send a success response to the client
+      // step 6: set the token in the cookies
+      res.cookie('token', token);
+
+      // step 7: send a success response to the client
       res.status(201).json({ token, user });
     } catch (error) {
       res.status(500).json({ error, message: error.message });
@@ -475,7 +486,10 @@
     // step 6: generate the authentication token
     const token = await user.generateToken();
 
-    // step 7: send the user and the token to the font end
+    // step 7: set the token in the cookies
+    res.cookie('token', token);
+
+    // step 8: send the user and the token to the font end
     res
       .status(200)
       .json({ user, token, message: "User loggedin successfully" });
@@ -604,6 +618,9 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
 
 - Extract the `token` from the `req.cookies` or `req.headers.authorization` .
 - Check if the `token` is found or not. If not, then terminate the request-response cycle and send an error message saying ‘Unauthorized access’ to the front end with status code 401.
+- If not defined already, then define a model named `blacklistTokenModel` in the `./models/blacklistTokenModel.js` file for the black listed token
+- Import the `blacklistTokenModel` model from the `./models/blacklistTokenModel.js` file
+- Using the `blacklistTokenModel`, Check if the token is black listed already or not. If the token is found to be a black listed token then terminate the request-response cycle and send an error message saying "Unauthorized access" to the front end with status code 401.
 - Decode the token using `jwt.verify(token, secret)` method which ultimately return a decoded object containing the user ID ( i.e. `_id` ) within it
 - Now find the user from the database using the user ID found in the decoded object.
 - Add the user information in the `request` object with a key `user` so that the other middleware or controller function that gets execute after this middleware can access the user information by `req.user` .
@@ -612,28 +629,36 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
   ```jsx
   const userModel = require("../models/userModel.js");
   const jwt = require("jsonwebtoken");
+  const blacklistTokenModel = require('../mdoels/blacklistTokenModel.js');
 
   // @name: authUser
   // @desc: Authenticate a user by using the token validation
   // @auth: Omar Bin Saleh
   const authUser = async (req, res, next) => {
     // step 1: check if the token is found or not
-    const token = req.cookies?.token || req.headers?.authorization?.split(" ")[1];
+    const token =
+      req.cookies?.token || req.headers?.authorization?.split(" ")[1];
     if (!token) {
       return res.status(401).json({ message: "Unauthorized access" });
     }
 
+    // step 2: check if the token is black listed
+    const isBlackListed = await blacklistTokenModel.findOne({token});
+    if (isBlackListed) {
+      return res.status(401).json({message: "Unauthorized access"});
+    }
+
     try {
-      // step 2: decode the token
+      // step 3: decode the token
       const decodedObj = jwt.verify(token, process.env.JWT_SECRET);
 
-      // step 3: check if the user is found or not
+      // step 4: check if the user is found or not
       const user = await userModel.findOne({ _id: decodedObj._id });
       if (!user) {
         return res.status(401).json({ message: "Unauthorized access" });
       }
 
-      // step 4: add the user information in the request object
+      // step 5: add the user information in the request object
       req.user = user;
       return next();
     } catch (error) {
@@ -644,6 +669,39 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
   // exports all auth middleware
   module.exports = { authUser };
   ```
+### `blacklistTokenModel` Model Implementation
+
+`blacklistTokenModel` is a model to store all the black listed token in the databas. When a user logout, the logout API will take the token, which the user got after successfull login or registeration as a new user, and mark to the token in the database as a black listed token. The following are the step by step implementation of the model
+
+- Create a file named `blacklistTokenModel.js` in the `./mdodels` directory. In the `./models/blacklistTokenModel.js` file, create the schema for a blacklist token in such way that the blacklist token should automatically be deleted from the database after 24 hours from their creation.
+- Using the `blacklistTokenSchema`, create a model and export it.
+
+Here is how the `./models/blacklistTokenModel.js` file looks like at this point
+  ```js
+  // import dependencies
+  const mongoose = require('mongoose');
+
+  // define schema for blacklist token
+  const blacklistTokenSchema = new mongoose.Schema({
+    token: {
+      type: String,
+      required: true,
+      unique: true
+    },
+    createAt: {
+      type: Date,
+      default: Date.now,
+      expires: 86400 // 24 hours in seconds
+    }
+  });
+
+  // create model for blacklist token
+  const blacklistTokenModel = mongoose.model('BlacklistTokens', blacklistTokenSchema);
+
+  // exports the blacklistTokenModel
+  module.exports = blacklistTokenModel;
+  ```
+
 
 ### Mongoose Schema
 

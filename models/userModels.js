@@ -33,7 +33,7 @@ const userSchema = new mongoose.Schema({
 
 // add methods to the userSchema
 userSchema.methods.generateAuthToken = () => {
-   const token = jwt.sign({_id: this._id}, process.env.JWT_SECRET);
+   const token = jwt.sign({_id: this._id}, process.env.JWT_SECRET, {expiresIn: '24h'});
    return token;
 };
 

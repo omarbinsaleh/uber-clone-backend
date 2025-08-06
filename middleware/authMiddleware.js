@@ -1,4 +1,5 @@
 const userModel = require('../models/userModel.js');
+const blacklistTokenModel = require('../models/blacklistTokenModel.js');
 const jwt = require('jsonwebtoken')
 
 // @name: authUser
@@ -11,17 +12,23 @@ const authUser = async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized access' });
    };
 
+   // step 2: check if the token is black listed or not
+   const isBlackListed = await blacklistTokenModel.findOne({token});
+   if (isBlackListed) {
+      return res.status(401).json({message: 'Unauthorized access'});
+   }
+
    try {
-      // step 2: decode the token
+      // step 3: decode the token
       const decodedObj = jwt.verify(token, process.env.JWT_SECRET);
 
-      // step 3: check if the user is found or not
+      // step 4: check if the user is found or not
       const user = await userModel.findOne({ _id: decodedObj._id });
       if (!user) {
          return res.status(401).json({ message: 'Unauthorized access' });
       };
 
-      // step 4: add the user information in the request object
+      // step 5: add the user information in the request object
       req.user = user;
       return next();
 
