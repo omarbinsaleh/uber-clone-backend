@@ -403,6 +403,7 @@
 - Generate a token for authentication
 - Then send user information and the token to the front end with the status code 200 and a success message.
   Here is how the `./controllers/userController.js` file looks like at this point
+
   ```jsx
   // dependencies
   const { validationResult } = require("express-validator");
@@ -482,6 +483,165 @@
 
   // export the user controllers
   module.exports = { registerUser, loginUser };
+  ```
+
+### `getUserProfile` Controller Implementation
+
+This controller function will control and handle all the functionality that are associated with returning a logged-in user profile information. The followings is how the controller is implemented step by step:
+
+- Extract user data - i.e. `user` from the request object.
+- send the `user` to the front end with status code 200 and a success message
+
+NOTE: it is important to note that this `getUserProfile` controller is executed after the execution of a middleware named `authUser` which basically authenticates the user using token verification and add the user information in the `request` object, if it can authenticate the user successfully.
+
+Here is how the `getUserProfile` controller looks like in the `./controllers/userController.js` file
+
+```jsx
+const { validationResult } = require("express-validator");
+const userModel = require("../models/userModels.js");
+const userServices = require("../services/userService.js");
+
+// @name: registerUser
+// @path: POST /user/register
+// @desc: Create a new user
+// @auth: Omar Bin Saleh
+const registerUser = async (req, res, next) => {
+  try {
+    // step 1: extract data from the request body
+    const { fullName, email, password } = req.body;
+
+    // step 2: handle firstName, email and password validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    // step 3: hash the password
+    const hashedPassword = await userModel.hashedPassword(password);
+
+    // step 4: create a new user
+    const user = await userServices.createUser({
+      firstName: fullName.firstName,
+      lastName: fullName.lastName,
+      email,
+      password: hashedPassword,
+    });
+
+    // step 5: generate token
+    const token = user.generateAuthToken();
+
+    // step 6: send a success response to the client
+    res.status(201).json({ token, user });
+  } catch (error) {
+    res.status(500).json({ error, message: error.message });
+  }
+};
+
+// @name: findUsers
+// @path: GET /user
+// @desc: retrive all the users from the DB;
+// @auth: Omar Bin Saleh
+const findUsers = async (req, res, next) => {
+  try {
+    res.send({ user: "all users has been returned successfully" });
+    next();
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @name: loginUser
+// @path: POST /user/login
+// @desc: allow an existing user to login
+// @auth: Omar Bin Saleh
+const loginUser = async (req, res, next) => {
+  // step 1: extract data from the request body
+  const { email, password } = req.body;
+
+  // step 2: email and password error validation
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  // step 3: find user in the database with the email
+  const user = await userModel.findOne({ email }).select("+password");
+
+  // step 4: check if the user already exists or not
+  if (!user) {
+    return res.status(401).json({ message: "Invalid email or password" });
+  }
+
+  // step 5: check if the password is matching
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) {
+    return res.status(401).json({ message: "Invalid email or password" });
+  }
+
+  // step 6: generate the authentication token
+  const token = await user.generateToken();
+
+  // step 7: send the user and the token to the font end
+  res.status(200).json({ user, token, message: "User loggedin successfully" });
+};
+
+// @name: getUserProfile
+// @path: GET /user/profile
+// @midd: authUser > getUserProfile
+// @desc: return profile information of a logged-in user
+// @auth: Omar Bin Saleh
+const getUserProfile = async (req, res, next) => {
+  res.status(200).json({ user: req.user, message: "User profile is returned" });
+};
+
+// exports user's controllers
+module.exports = { registerUser, findUsers, loginUser, getUserProfile };
+```
+
+### `authUser` Middleware Implementation
+
+`authUser` is a middleware function defined in the `./middleware/uathMiddleware.js` file. The middleware basically authenticates a user using token verification and add the user information in the `request` object, if it can authenticate the user successfully. The implementation of the middleware is as follows:
+
+- Extract the `token` from the `req.cookies` or `req.headers.authorization` .
+- Check if the `token` is found or not. If not, then terminate the request-response cycle and send an error message saying ‘Unauthorized access’ to the front end with status code 401.
+- Decode the token using `jwt.verify(token, secret)` method which ultimately return a decoded object containing the user ID ( i.e. `_id` ) within it
+- Now find the user from the database using the user ID found in the decoded object.
+- Add the user information in the `request` object with a key `user` so that the other middleware or controller function that gets execute after this middleware can access the user information by `req.user` .
+  Here is how the `./middleware/authMiddleware.js` file looks like at this point:
+  ```jsx
+  const userModel = require("../models/userModel.js");
+  const jwt = require("jsonwebtoken");
+
+  // @name: authUser
+  // @desc: Authenticate a user by using the token validation
+  // @auth: Omar Bin Saleh
+  const authUser = async (req, res, next) => {
+    // step 1: check if the token is found or not
+    const token = req.cookies?.token || req.headers?.authorization?.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
+
+    try {
+      // step 2: decode the token
+      const decodedObj = jwt.verify(token, process.env.JWT_SECRET);
+
+      // step 3: check if the user is found or not
+      const user = await userModel.findOne({ _id: decodedObj._id });
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized access" });
+      }
+
+      // step 4: add the user information in the request object
+      req.user = user;
+      return next();
+    } catch (error) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
+  };
+
+  // exports all auth middleware
+  module.exports = { authUser };
   ```
 
 ### Mongoose Schema
