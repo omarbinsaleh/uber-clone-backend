@@ -307,6 +307,7 @@
 
 - Create a directory in the root and name it as `services` . Then create a file in the `./services` directory and name that file `userServices.js` .
 - Create a service named `createUser` in the `./services/userServices.js` file whose purpose is to create a new user in the MongoDB database only and return the new user.
+
   ```jsx
   const userModel = require("../models/userModel.js");
 
@@ -328,6 +329,7 @@
 
   module.exports = { createUser };
   ```
+
 - Extract data (`fullName`, `email`, `password`) from the request body `req.body`
 - Perform an error validation to check to see -
   - if the `email` is a valid email or not?
@@ -340,6 +342,7 @@
 - Send the `token` and the `user` to client with the status code 201
 - If anything goes wrong or error happens in the process, then catch and handle the error and send response to the client with proper status code and message.
   Here is how the `./controllers/userController.js` file looks like at this point:
+
   ```jsx
   const { validationResult } = require("express-validator");
   const userModel = require("../models/userModels.js");
@@ -381,7 +384,104 @@
   };
 
   // export the user controllers
-  module.exports = { createUser };
+  module.exports = { registerUser };
+  ```
+
+### `loginUser` Controller Implementation
+
+`loginUser` is a controller function which handles all the process of login an existing user in the system. The followings are the implementation of this controller
+
+- Define a middleware function named `loginUser` within the `./controllers/userController.js` file.
+- In the function body, Extract data - i.e. { `email`, `password` } - from the `req.body`
+- Perform an error-validation check for the `email` and `password` and send those errors to the front end, if anything found. The validation is supposed to check the following
+  - if the `email` provided is a valid email or not?
+  - The length of the `password` to make sure that the password is at least 6 characters long or more
+- Check if the user with the same `email` exist in the Database. Use `userModel.findOne(queryObj)` method to find the user in the database. This method will return the user, if the user with the same email is found.
+- In case by any chance if the user is not found, then terminate the request- response cycle and send an error message ‘Invalid email or password’ with the status code of 401.
+- Compare both passwords and check if the `password` is matching with that in the database which `user.password` .
+- In case by any chance if both the passwords do not match with each other, then terminate the request- response cycle and send an error message ‘Invalid email or password’ with the status code of 401.
+- Generate a token for authentication
+- Then send user information and the token to the front end with the status code 200 and a success message.
+  Here is how the `./controllers/userController.js` file looks like at this point
+  ```jsx
+  // dependencies
+  const { validationResult } = require("express-validator");
+  const userModel = require("../models/userModels.js");
+  const userServices = require("../services/userService.js");
+
+  // @name: registerUser
+  // @path: POST /user/register
+  // @desc: Create a new user
+  const registerUser = async (req, res, next) => {
+    try {
+      // step 1: extract data from the request body
+      const { fullName, email, password } = req.body;
+
+      // step 2: handle firstName, email and password validation errors
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      // step 3: hash the password
+      const hashedPassword = await userModel.hashedPassword(password);
+
+      // step 4: create a new user
+      const user = await userServices.createUser({
+        firstName: fullName.firstName,
+        lastName: fullName.lastName,
+        email,
+        password: hashedPassword,
+      });
+
+      // step 5: generate token
+      const token = user.generateAuthToken();
+
+      // step 6: send a success response to the client
+      res.status(201).json({ token, user });
+    } catch (error) {
+      res.status(500).json({ error, message: error.message });
+    }
+  };
+
+  // @name: loginUser
+  // @path: POST /user/login
+  // @desc: login user into the system
+  const loginUser = async (req, res, next) => {
+    // step 1: extract data from the request body
+    const { email, password } = req.body;
+
+    // step 2: email and password error validation
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    // step 3: find user in the database with the email
+    const user = await userModel.findOne({ email }).select("+password");
+
+    // step 4: check if the user already exists
+    if (!user) {
+      res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // step 5: check if the password is matching
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // step 6: generate the authentication token
+    const token = await user.generateToken();
+
+    // step 7: send the user and the token to the font end
+    res
+      .status(200)
+      .json({ user, token, message: "User loggedin successfully" });
+  };
+
+  // export the user controllers
+  module.exports = { registerUser, loginUser };
   ```
 
 ### Mongoose Schema
