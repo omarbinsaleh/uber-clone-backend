@@ -5,6 +5,7 @@ const userServices = require('../services/userService.js');
 // @name: registerUser
 // @path: POST /user/register
 // @desc: Create a new user
+// @auth: Omar Bin Saleh
 const registerUser = async (req, res, next) => {
    try {
       // step 1: extract data from the request body
@@ -40,7 +41,8 @@ const registerUser = async (req, res, next) => {
 // @name: findUsers
 // @path: GET /user
 // @desc: retrive all the users from the DB;
-const findUsers = async (req, res, next) => {
+// @auth: Omar Bin Saleh
+const getAllUsers = async (req, res, next) => {
    try {
       res.send({ user: 'all users has been returned successfully' })
       next()
@@ -51,7 +53,8 @@ const findUsers = async (req, res, next) => {
 
 // @name: loginUser
 // @path: POST /user/login
-// @desc: allow an existing user to login 
+// @desc: allow an existing user to login
+// @auth: Omar Bin Saleh 
 const loginUser = async (req, res, next) => {
    // step 1: extract data from the request body
    const { email, password } = req.body;
@@ -83,6 +86,15 @@ const loginUser = async (req, res, next) => {
    res.status(200).json({ user, token, message: 'User loggedin successfully' });
 };
 
+// @name: getUserProfile
+// @path: GET /user/profile
+// @midd: authUser > getUserProfile 
+// @desc: return profile information of a logged-in user
+// @auth: Omar Bin Saleh
+const getUserProfile = async (req, res, next) => {
+   res.status(200).json({user: req.user, message: 'User profile is returned'});
+}
+
 
 // exports user's controllers
-module.exports = { registerUser, findUsers, loginUser };
+module.exports = { registerUser, getAllUsers, loginUser, getUserProfile };
