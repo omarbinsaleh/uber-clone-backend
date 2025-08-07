@@ -1141,42 +1141,124 @@ module.exports = { authCaptain };
 - return the new created captain;
 
 Here is how the `./services/captainService.js` file looks like at this point:
+
 ```jsx
 // import dependencies
-const captainModel = require('../models/captainModel.js');
+const captainModel = require("../models/captainModel.js");
 
 // @name: createCaptain
 // @desc: Crate a new captain in the database
 // @auth: Omar Bin Saleh
-const createCaptain = async ({firstName, lastName, email, password, color, plate, capacity, vehicleType}) => {
+const createCaptain = async ({
+  firstName,
+  lastName,
+  email,
+  password,
+  color,
+  plate,
+  capacity,
+  vehicleType,
+}) => {
   // step 1: check if any of the fields is missing
-  if (!firstName || !lastName || !email || !password || !color || !plate || !capacity || vehicleType) {
-    throw new Error('All fields are required');
+  if (
+    !firstName ||
+    !lastName ||
+    !email ||
+    !password ||
+    !color ||
+    !plate ||
+    !capacity ||
+    vehicleType
+  ) {
+    throw new Error("All fields are required");
   }
   try {
     // step 2: create the captain
     const captain = await captainModel.create({
-      fullName: {firstName, lastName},
+      fullName: { firstName, lastName },
       email,
       password,
       vehicle: {
         color,
         plate,
         capacity,
-        vehicleType
-      }
+        vehicleType,
+      },
     });
 
     // step 3: return the captain
     return captain;
-
   } catch (error) {
     throw new Error(error.message);
   }
-}
+};
 
 // exports the captain services
 module.exports = { createCaptain };
+```
+
+### `registerCaptain` Controller Implementation
+
+`registerCaptain` is controller function defined in the `./controllers/captainController.js` file with the purpose of handle the request and response of the captain registeration API . The followings are the implementation of the controller
+
+- Extract all the ncessary information from the request body
+- Perform an error validation for the all the fields that are comming through the request body
+- Hash the password using `captainModel.hashPassword(password)` method
+- Register the Captain using the `captainModel.create(captainInfo)` and save the new created captain in a variable named `captain`.
+- Genereate a authentication token using the `captain.generateAuthToken()` method
+- Send a response to the front end with the captain information, token and a status code 201.
+- If Soemthing goes wrong in the process, then catch the error and handle the error appropriately
+
+Here is how the `./controllers/captainController.js` file looks like at this point:
+
+```jsx
+// import necessary dependencies
+const { validationResult } = require("express-validator");
+const captainModel = require("../models/captainModel.js");
+const captainService = require("../services/captainService.js");
+
+// @name: registerCaptain
+// @path: POST /captains/register
+// @desc: Register a new captain in the system and send response to the front end after that
+// @auth: Omar Bin Saleh
+const registerCaptain = async (req, res, next) => {
+  try {
+    // step 1: extract necessary information from the request body
+    const { fullName, email, password, vehicle } = request.body;
+
+    // step 2: perfor error validation for all the field comming through the request body
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    // step 3: hash the password
+    const hashedPassword = await captainModel.hashPassword(password);
+
+    // step 4: create captain
+    const captain = await captainService.createCaptain({
+      firstName: fullName.firstName,
+      lastName: fullName.lastName,
+      email,
+      password: hashedPassword,
+      color: vehicle.color,
+      plate: vehicle.plate,
+      capacity: vehicle.capacity,
+      vehicleType: vehicle.vehicleType,
+    });
+
+    // step 5: generate token
+    const token = await captain.generateAuthToken();
+
+    // step 6: send response to the front end
+    res.status(201).json({ captain, token });
+  } catch (error) {
+    res.status(402).json({ error, message: error.message });
+  }
+};
+
+// exports captain controllers
+module.exports = { registerCaptain };
 ```
 
 ### Mongoose Schema
