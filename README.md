@@ -1088,6 +1088,7 @@ Create a middleware function in the `./middleware/captainMiddleware.js` file and
 
 - Extract the token from the cookies or from the headers
 - Check if the token is found or not. If NOT, then send an error response to the front end with status code 401 and a message saying 'Unauthorized access'
+- Check if the token is black listed or not
 - Decode the token using the `jwt.verify(token, secret)` method provided by the `jsonwebtoken` package. and extract the captain ID `_id` from the decoded information return by the `jwt.verify(token, secret)` method.
 - Find the captain from the database using the captin id and validate the captain;
 - If the captain is not found, terminate the request-response cycle and send an error response to the front end with a status code 401 and an error message saying 'Unauthorized access'.
@@ -1108,18 +1109,24 @@ const authCaptain = async (req, res, next) => {
   // step 1: check if the token is found or not
   const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
   if (!token) {
-    res.status(401).json({ message: "Unauthorized access" });
+    return res.status(401).json({ message: "Unauthorized access" });
   }
 
   try {
-    // step 2: verify the token and validate the captain
+    // step 2: check if the token is black listed or not
+    const isBlackListed = await blacklistTokenModel.findOne({ token });
+    if (isBlackListed) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    };
+
+    // step 3: verify the token and validate the captain with the captai ID (_id)
     const decodedObj = jwt.verify(token, process.env.JWT_SECRET);
     const captain = await captainModel.findOne({ _id: decodedObj._id });
     if (!captain) {
-      res.status(401).json({ message: "Unauthorized access" });
-    }
+      return res.status(401).json({ message: "Unauthorized access" });
+    };
 
-    // step 3: add the captain information in the request object
+    // step 4: add the captain information in the request object
     req.captain = captain;
     return next();
   } catch (error) {
