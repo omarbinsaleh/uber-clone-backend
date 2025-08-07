@@ -999,18 +999,64 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
   const express = require("express");
   const captainControllers = require("../controllers/captainController.js");
   const captainMiddleware = require("../middleware/captainMiddleware.js");
+  const { body } = require("express-validator");
 
   // initialize captain router
   const captainRouter = express.Router();
 
-  // define API end point for captain
-  captainRouter.post("/register", captainControllers.registerCaptain);
-  captainRouter.post("/login", captainControllers.loginCaptain);
+  // define API for captain
+  // @name: Regisger Captain API
+  // @desc: Register a new user in the system
+  captainRouter.post(
+    "/register",
+    [
+      body("fullName.firstName")
+        .isLength({ min: 3 })
+        .withMessage("First name must be at least 3 characters long"),
+      body("fullName.lastName")
+        .isLength({ min: 3 })
+        .withMessage("Last name must be at least 3 characters long"),
+      body("email").isEmail().withMessage("Invalid Email"),
+      body("password")
+        .isLength({ min: 6 })
+        .withMessage("Password must be at least 6 characters long"),
+      body("vehicle.color")
+        .isLength({ min: 3 })
+        .withMessage("Color must be at least 3 characters long"),
+      body("vehicle.plate")
+        .isLength({ min: 3 })
+        .withMessage("Plate must be at least 3 characters long"),
+      body("vehicle.capacity")
+        .isIn({ min: 1 })
+        .withMessage("Capacity must be at least 1"),
+      body("vehicle.vehicleType")
+        .isIn(["car", "motorcycle", "auto"])
+        .withMessage("Invalid vehicle type"),
+    ],
+    captainControllers.registerCaptain
+  );
+
+  // @name: Login Captain API
+  // @desc: Allow a captain login
+  captainRouter.post(
+    "/login",
+    [
+      body("email").isEmail().withMessage("Invalid Email"),
+      body("password").isLength({ min: 6 }).withMessage("Invalid Password"),
+    ],
+    captainControllers.loginCaptain
+  );
+
+  // @name: Captain Profile API
+  // @desc: Retrive a captain's profile information
   captainRouter.get(
     "/profile",
     captainMiddleware.authCaptain,
     captainControllers.getCaptainProfile
   );
+
+  // @name: Logout API for Captain
+  // @desc: Logout a captain from the system
   captainRouter.get(
     "/logout",
     captainMiddleware.authCaptain,
@@ -1021,16 +1067,11 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
   module.exports = captainRouter;
   ```
 
-- Define all the necessary middleware functions in the `./middleware/captainMiddleware.js` file. This is how the `./middleware/captainMiddleware.js` file looks like at this point:
-
-  ```jsx
-
-  ```
-
+- Define all the necessary middleware functions in the `./middleware/captainMiddleware.js` file.
 - Create a file named `captainController.js` in the `./controllers` directory and define all the controllers specific to captain routes in the `./controllers/captainController.js` file and export them all from there.
 - If needed, define appropriate services for the controllers in the `./services/captainService.js` file and export them
 
-#### The implementation of the `captainModel` - (A Model for the Captain)
+### The implementation of the `captainModel` - (A Model for the Captain)
 
 ### `authCaptain` Middleware Implementation
 
@@ -1079,6 +1120,63 @@ const authCaptain = async (req, res, next) => {
 
 // export the middleware
 module.exports = { authCaptain };
+```
+
+### `createCaptain` Service Implementation
+
+`createCaptain` is service which create a captain in the database and finall return the new created captain. The implementation of this service is as follows;
+
+- Create a `captainService.js` file in the `./services` directory. Within the `./services/captainService.js` file, create a function named `createCaptain` and export it.
+- The `createCaptain` fucntion takes an object as parameter containing following information
+  - `firstName` (required)
+  - `lastName` (required)
+  - `email` (required)
+  - `password` (required)
+  - `color` (required)
+  - `plate` (required)
+  - `capacity` (required)
+  - `vehicleType` (required)
+- Check if all the all the required information is provided or not. If NOT, throw an error with a message saying 'All fields are required'
+- Create Create a captain using the `captainModel.create(captainInfo)` method.
+- return the new created captain;
+
+Here is how the `./services/captainService.js` file looks like at this point:
+```jsx
+// import dependencies
+const captainModel = require('../models/captainModel.js');
+
+// @name: createCaptain
+// @desc: Crate a new captain in the database
+// @auth: Omar Bin Saleh
+const createCaptain = async ({firstName, lastName, email, password, color, plate, capacity, vehicleType}) => {
+  // step 1: check if any of the fields is missing
+  if (!firstName || !lastName || !email || !password || !color || !plate || !capacity || vehicleType) {
+    throw new Error('All fields are required');
+  }
+  try {
+    // step 2: create the captain
+    const captain = await captainModel.create({
+      fullName: {firstName, lastName},
+      email,
+      password,
+      vehicle: {
+        color,
+        plate,
+        capacity,
+        vehicleType
+      }
+    });
+
+    // step 3: return the captain
+    return captain;
+
+  } catch (error) {
+    throw new Error(error.message);
+  }
+}
+
+// exports the captain services
+module.exports = { createCaptain };
 ```
 
 ### Mongoose Schema
