@@ -18,10 +18,16 @@ const registerUser = async (req, res, next) => {
          return res.status(400).json({ errors: errors.array() })
       }
 
-      // step 3: hash the password
+      // step 3: check if user exists with the same email
+      const isUserExists = await userModel.findOne({email});
+      if (isUserExists) {
+         return res.status(400).json({message: 'User already exists with this email'});
+      }
+
+      // step 4: hash the password
       const hashedPassword = await userModel.hashedPassword(password);
 
-      // step 4: create a new user 
+      // step 5: create a new user 
       const user = await userServices.createUser({
          firstName: fullName.firstName,
          lastName: fullName.lastName,
@@ -29,13 +35,13 @@ const registerUser = async (req, res, next) => {
          password: hashedPassword
       });
 
-      // step 5: generate token
+      // step 6: generate token
       const token = user.generateAuthToken();
 
-      // step 6: set the token in the cookies
+      // step 7: set the token in the cookies
       res.cookie('token', token);
 
-      // step 6: send a success response to the client
+   // step 8: send a success response to the client
       res.status(201).json({ token, user });
    } catch (error) {
       res.status(500).json({ error, message: error.message });

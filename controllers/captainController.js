@@ -18,10 +18,16 @@ const registerCaptain = async (req, res, next) => {
          return res.status(400).json({ errors: errors.array() });
       }
 
-      // step 3: hash the password
+      // step 3: check if the is any captain in the database with the same email
+      const isCaptainExist = await captainModel.findOne({email});
+      if (isCaptainExist) {
+         return res.status(400).json({message: "Captain already exists with this email"});
+      }
+
+      // step 4: hash the password
       const hashedPassword = await captainModel.hashPassword(password);
 
-      // step 4: create captain
+      // step 5: create captain
       const captain = await captainService.createCaptain({
          firstName: fullName.firstName,
          lastName: fullName.lastName,
@@ -33,10 +39,13 @@ const registerCaptain = async (req, res, next) => {
          vehicleType: vehicle.vehicleType
       })
 
-      // step 5: generate token
+      // step 6: generate token
       const token = await captain.generateAuthToken();
 
-      // step 6: send response to the front end
+      // step 7: set the token in the cookies
+      res.cookie('token', token);
+
+      // step 8: send response to the front end
       res.status(201).json({ captain, token });
 
    } catch (error) {

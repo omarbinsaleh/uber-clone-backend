@@ -341,6 +341,7 @@
   - if the `firstName` is at least 3 character long or not?
   - if the `password` is at least 6 character long or not?
 - If something goes wrong in the error validation, terminate the request-response cycle and send a response to the client with the status code 400 and the errors
+- Check if user exists in the database with the same email.
 - Hash the password extracted from the `req.body`
 - Create a new user using the `createUser()` method defined in the `./services/userService.js` file
 - Generate a token for authentication
@@ -368,10 +369,16 @@
         return res.status(400).json({ errors: errors.array() });
       }
 
-      // step 3: hash the password
+      // step 3: check if user exists already with the same email
+      const isUserExists = await userModel.findOne({email});
+      if (isuserExists) {
+        return res.status(400).json({message: 'User already exists with the same email'});
+      };
+
+      // step 4: hash the password
       const hashedPassword = await userModel.hashedPassword(password);
 
-      // step 4: create a new user
+      // step 5: create a new user
       const user = await userServices.createUser({
         firstName: fullName.firstName,
         lastName: fullName.lastName,
@@ -379,13 +386,13 @@
         password: hashedPassword,
       });
 
-      // step 5: generate token
+      // step 6: generate token
       const token = user.generateAuthToken();
 
-      // step 6: set the token in the cookies
+      // step 7: set the token in the cookies
       res.cookie("token", token);
 
-      // step 6: send a success response to the client
+      // step 8: send a success response to the client
       res.status(201).json({ token, user });
     } catch (error) {
       res.status(500).json({ error, message: error.message });
@@ -1203,9 +1210,11 @@ module.exports = { createCaptain };
 
 - Extract all the ncessary information from the request body
 - Perform an error validation for the all the fields that are comming through the request body
+- Check if there is a captain in the database with the same email.
 - Hash the password using `captainModel.hashPassword(password)` method
 - Register the Captain using the `captainModel.create(captainInfo)` and save the new created captain in a variable named `captain`.
 - Genereate a authentication token using the `captain.generateAuthToken()` method
+- Set the token in the cookies using `res.cookie(tokenName, token)` method.
 - Send a response to the front end with the captain information, token and a status code 201.
 - If Soemthing goes wrong in the process, then catch the error and handle the error appropriately
 
@@ -1232,10 +1241,16 @@ const registerCaptain = async (req, res, next) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    // step 3: hash the password
+    // step 3: check if there is a captain in the DB with the same email
+    const isCaptainExists = await captainModel.findOne({email});
+    if (isCaptainExists) {
+      return res.status(400).json({message: 'Captain already exists with the same email'});
+    };
+
+    // step 4: hash the password
     const hashedPassword = await captainModel.hashPassword(password);
 
-    // step 4: create captain
+    // step 5: create captain
     const captain = await captainService.createCaptain({
       firstName: fullName.firstName,
       lastName: fullName.lastName,
@@ -1247,10 +1262,13 @@ const registerCaptain = async (req, res, next) => {
       vehicleType: vehicle.vehicleType,
     });
 
-    // step 5: generate token
+    // step 6: generate token
     const token = await captain.generateAuthToken();
 
-    // step 6: send response to the front end
+    // step 7: set the token in the cookies
+    res.cookie('token', token);
+
+    // step 8: send response to the front end
     res.status(201).json({ captain, token });
   } catch (error) {
     res.status(402).json({ error, message: error.message });
