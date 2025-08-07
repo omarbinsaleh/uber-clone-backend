@@ -868,6 +868,7 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
 ## Captain Specific API End Points Implementation
 
 - Create a mongoose Schema for the captain model in the `./models/captainModel.js` file and using the `captainSchema`, Create a Model for the captain and finally export the `captainModel` from the `./models/captainModel.js` file. This is how the `./models/captainModel.js` file looks like:
+
   ```jsx
     // import dependencies
     const mongoose = require('mongoose');
@@ -959,17 +960,19 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
     // export the captain model
     module.exports = captainModel;
   ```
+
 - Create a file named `captainRoutes.js` in the `./routes` directory. In the `./routes/captainRoutes.js` file, specify all the API end points specific to the captain and exports them from there.
 - Import the captain routes in the `app.js` file and configure a captain route. Here is how the `app.js` file looks like at this point:
+
   ```jsx
   // import dependencies
-  require('dotenv').config();
-  const express = require('express');
-  const cors = require('cors');
-  const connectToDb = require('./db/db');
-  const userRoutes = require('./routes/userRoutes.js');
-  const serverRoutes = require('./routes/serverRoutes.js');
-  const captainRoutes = require('./routes/captainRoutes.js')
+  require("dotenv").config();
+  const express = require("express");
+  const cors = require("cors");
+  const connectToDb = require("./db/db");
+  const userRoutes = require("./routes/userRoutes.js");
+  const serverRoutes = require("./routes/serverRoutes.js");
+  const captainRoutes = require("./routes/captainRoutes.js");
 
   // step 1: initialize the express app
   const app = express();
@@ -978,46 +981,105 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
   app.use(cors());
 
   // step 3: connect to the database
-  connectToDb()
+  connectToDb();
 
   // step 4: define routes
-  app.use('/', serverRoutes)
-  app.use('/user', userRoutes);
-  app.use('/captain', captainRoutes); //  <--- captain routes configuration
+  app.use("/", serverRoutes);
+  app.use("/user", userRoutes);
+  app.use("/captain", captainRoutes); //  <--- captain routes configuration
 
   // step 5: export the app instance
   module.exports = app;
   ```
+
 - Create a file named `captainRoutes.js` in the `./routes` directory. This `./routes/captainRoute.js` file will contain all the specification of the captain specific API end points. Here is how the `./routes/captainRoutes.js` file looks like at this point:
+
   ```jsx
   // import dependencies
-  const express = require('express');
-  const captainControllers = require('../controllers/captainController.js');
-  const captainMiddleware = require('../middleware/captainMiddleware.js');
+  const express = require("express");
+  const captainControllers = require("../controllers/captainController.js");
+  const captainMiddleware = require("../middleware/captainMiddleware.js");
 
   // initialize captain router
   const captainRouter = express.Router();
 
   // define API end point for captain
-  captainRouter.post('/register', captainControllers.registerCaptain);
-  captainRouter.post('/login', captainControllers.loginCaptain);
-  captainRouter.get('/profile', captainMiddleware.authCaptain, captainControllers.getCaptainProfile);
-  captainRouter.get('/logout', captainMiddleware.authCaptain, captainControllers.logoutCaptain);
+  captainRouter.post("/register", captainControllers.registerCaptain);
+  captainRouter.post("/login", captainControllers.loginCaptain);
+  captainRouter.get(
+    "/profile",
+    captainMiddleware.authCaptain,
+    captainControllers.getCaptainProfile
+  );
+  captainRouter.get(
+    "/logout",
+    captainMiddleware.authCaptain,
+    captainControllers.logoutCaptain
+  );
 
   // exports captain router
   module.exports = captainRouter;
   ```
 
-- Define all the necessary middleware functions in the `./middleware/captainMiddleware.js` file.
+- Define all the necessary middleware functions in the `./middleware/captainMiddleware.js` file. This is how the `./middleware/captainMiddleware.js` file looks like at this point:
+
+  ```jsx
+
+  ```
+
 - Create a file named `captainController.js` in the `./controllers` directory and define all the controllers specific to captain routes in the `./controllers/captainController.js` file and export them all from there.
 - If needed, define appropriate services for the controllers in the `./services/captainService.js` file and export them
 
 #### The implementation of the `captainModel` - (A Model for the Captain)
 
-
 ### `authCaptain` Middleware Implementation
-Create a middleware function in the `./middleware/captainMiddleware.js` file and named it as `authCaptain` which will basically authenticate the idendtity of a captain using token validation.
 
+Create a middleware function in the `./middleware/captainMiddleware.js` file and named it as `authCaptain` which will basically authenticate the idendtity of a captain using token validation. The followings are step by step actions that the `authCaptain` middleware performs
+
+- Extract the token from the cookies or from the headers
+- Check if the token is found or not. If NOT, then send an error response to the front end with status code 401 and a message saying 'Unauthorized access'
+- Decode the token using the `jwt.verify(token, secret)` method provided by the `jsonwebtoken` package. and extract the captain ID `_id` from the decoded information return by the `jwt.verify(token, secret)` method.
+- Find the captain from the database using the captin id and validate the captain;
+- If the captain is not found, terminate the request-response cycle and send an error response to the front end with a status code 401 and an error message saying 'Unauthorized access'.
+- Add the captain information in the request object so that the information can be accessed from the other middleware or controllers that runs after this `authCaptain` middleware.
+- call the `next` function to move forword.
+- If something goes wrong in the process, then catch the error and terminate the request-response cycle and send an error response to the front end with a status code 401 and a message saying 'Unauthorized access'.
+
+Here is how the `./middleware/captainMiddleware.js` file looks like at this point:
+
+```jsx
+const jwt = require("jsonwebtoken");
+const captainModel = require("../models/captainModel.js");
+
+// @name: authCaptain
+// @desc: A middleware function to authenticate a captain by using the token validation
+// @auth: Omar Bin Saleh
+const authCaptain = async (req, res, next) => {
+  // step 1: check if the token is found or not
+  const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
+  if (!token) {
+    res.status(401).json({ message: "Unauthorized access" });
+  }
+
+  try {
+    // step 2: verify the token and validate the captain
+    const decodedObj = jwt.verify(token, process.env.JWT_SECRET);
+    const captain = await captainModel.findOne({ _id: decodedObj._id });
+    if (!captain) {
+      res.status(401).json({ message: "Unauthorized access" });
+    }
+
+    // step 3: add the captain information in the request object
+    req.captain = captain;
+    return next();
+  } catch (error) {
+    return res.status(401).json({ message: "Unauthorized access", error });
+  }
+};
+
+// export the middleware
+module.exports = { authCaptain };
+```
 
 ### Mongoose Schema
 
