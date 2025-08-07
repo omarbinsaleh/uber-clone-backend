@@ -11,14 +11,14 @@ const authUser = async (req, res, next) => {
    if (!token) {
       return res.status(401).json({ message: 'Unauthorized access' });
    };
-
-   // step 2: check if the token is black listed or not
-   const isBlackListed = await blacklistTokenModel.findOne({token});
-   if (isBlackListed) {
-      return res.status(401).json({message: 'Unauthorized access'});
-   }
-
+   
    try {
+      // step 2: check if the token is black listed or not
+      const isBlackListed = await blacklistTokenModel.findOne({token});
+      if (isBlackListed) {
+         return res.status(401).json({message: 'Unauthorized access'});
+      }
+      
       // step 3: decode the token
       const decodedObj = jwt.verify(token, process.env.JWT_SECRET);
 

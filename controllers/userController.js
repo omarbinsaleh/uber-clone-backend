@@ -19,9 +19,9 @@ const registerUser = async (req, res, next) => {
       }
 
       // step 3: check if user exists with the same email
-      const isUserExists = await userModel.findOne({email});
+      const isUserExists = await userModel.findOne({ email });
       if (isUserExists) {
-         return res.status(400).json({message: 'User already exists with this email'});
+         return res.status(400).json({ message: 'User already exists with this email' });
       }
 
       // step 4: hash the password
@@ -41,7 +41,7 @@ const registerUser = async (req, res, next) => {
       // step 7: set the token in the cookies
       res.cookie('token', token);
 
-   // step 8: send a success response to the client
+      // step 8: send a success response to the client
       res.status(201).json({ token, user });
    } catch (error) {
       res.status(500).json({ error, message: error.message });
@@ -66,37 +66,41 @@ const getAllUsers = async (req, res, next) => {
 // @desc: allow an existing user to login
 // @auth: Omar Bin Saleh 
 const loginUser = async (req, res, next) => {
-   // step 1: extract data from the request body
-   const { email, password } = req.body;
+   try {
+      // step 1: extract data from the request body
+      const { email, password } = req.body;
 
-   // step 2: email and password error validation
-   const errors = validationResult(req);
-   if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      // step 2: email and password error validation
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+         return res.status(400).json({ errors: errors.array() });
+      }
+
+      // step 3: find user in the database with the email
+      const user = await userModel.findOne({ email }).select('+password');
+
+      // step 4: check if the user already exists or not
+      if (!user) {
+         return res.status(401).json({ message: 'Invalid email or password' });
+      };
+
+      // step 5: check if the password is matching
+      const isMatch = await user.comparePassword(password);
+      if (!isMatch) {
+         return res.status(401).json({ message: 'Invalid email or password' });
+      };
+
+      // step 6: generate the authentication token
+      const token = user.generateAuthToken();
+
+      // step 7: set the token in the cookies
+      res.cookie('token', token);
+
+      // step 8: send the user and the token to the font end
+      res.status(200).json({ user, token, message: 'User loggedin successfully' });
+   } catch (error) {
+      return res.status(401).json({message: error.message, error});
    }
-
-   // step 3: find user in the database with the email
-   const user = await userModel.findOne({ email }).select('+password');
-
-   // step 4: check if the user already exists or not
-   if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-   };
-
-   // step 5: check if the password is matching
-   const isMatch = await user.comparePassword(password);
-   if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-   };
-
-   // step 6: generate the authentication token
-   const token = await user.generateToken();
-
-   // step 7: set the token in the cookies
-   res.cookie('token', token);
-
-   // step 8: send the user and the token to the font end
-   res.status(200).json({ user, token, message: 'User loggedin successfully' });
 };
 
 // @name: getUserProfile
@@ -118,14 +122,14 @@ const logoutUser = async (req, res, next) => {
       // step 1: save the token in the database as black listed token
       const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
       const blacklistToken = await blacklistTokenModel({ token });
-      
+
       // step 2: clear the token from the cookies
       res.crearCookie('token');
 
       // step 3: send a response to the front end with the black listed token
-      res.status(200).json({message: 'User logged out successfully', blacklistToken});
+      res.status(200).json({ message: 'User logged out successfully', blacklistToken });
    } catch (error) {
-      res.status(401).json({message: 'Unauthorized access or Something went wrong'})
+      res.status(401).json({ message: 'Unauthorized access or Something went wrong' })
    }
 
 };
