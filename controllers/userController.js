@@ -99,7 +99,7 @@ const loginUser = async (req, res, next) => {
       // step 8: send the user and the token to the font end
       res.status(200).json({ user, token, message: 'User loggedin successfully' });
    } catch (error) {
-      return res.status(401).json({message: error.message, error});
+      res.status(401).json({ message: error.message, error });
    }
 };
 

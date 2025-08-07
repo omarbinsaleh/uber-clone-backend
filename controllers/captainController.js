@@ -1,7 +1,7 @@
 // import necessary dependencies
 const { validationResult } = require('express-validator');
 const captainModel = require('../models/captainModel.js');
-const captainService = require('../services/captainService.js');
+const captainServices = require('../services/captainService.js');
 
 // @name: registerCaptain
 // @path: POST /captains/register
@@ -28,7 +28,7 @@ const registerCaptain = async (req, res, next) => {
       const hashedPassword = await captainModel.hashPassword(password);
 
       // step 5: create captain
-      const captain = await captainService.createCaptain({
+      const captain = await captainServices.createCaptain({
          firstName: fullName.firstName,
          lastName: fullName.lastName,
          email,
@@ -90,8 +90,17 @@ const loginCaptain = async (req, res, next) => {
       res.status(200).json({ captain, token });
    } catch (error) {
       res.status(400).json({ message: error.message, error });
-   }
+   };
+};
+
+// @name: getCaptainProfile
+// @path: GET /captains/profile
+// @midd: authCaptain > getCaptainProfile
+// @desc: Return a captain's profile information
+// @auth: Omar Bin Saleh
+const getCaptainProfile = async (req, res, next) => {
+   res.status(200).json({captain: req.captain, message: 'Captain profile is returned successfully'});
 }
 
 // exports captain controllers
-module.exports = { registerCaptain, loginCaptain };
+module.exports = { registerCaptain, loginCaptain, getCaptainProfile };
