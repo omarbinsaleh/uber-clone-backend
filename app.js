@@ -18,8 +18,8 @@ connectToDb()
 
 // step 4: define routes
 app.use('/', serverRoutes)
-app.use('/user', userRoutes);
-app.use('/captain', captainRoutes); //  <--- captain routes configuration
+app.use('/users', userRoutes);
+app.use('/captains', captainRoutes); //  <--- captain routes configuration
 
 // step 5: export the app instance
 module.exports = app;

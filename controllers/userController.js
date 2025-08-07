@@ -4,7 +4,7 @@ const blacklistTokenModel = require('../models/blacklistTokenModel.js');
 const userServices = require('../services/userService.js');
 
 // @name: registerUser
-// @path: POST /user/register
+// @path: POST /users/register
 // @desc: Create a new user
 // @auth: Omar Bin Saleh
 const registerUser = async (req, res, next) => {
@@ -49,7 +49,7 @@ const registerUser = async (req, res, next) => {
 }
 
 // @name: findUsers
-// @path: GET /user
+// @path: GET /users
 // @desc: retrive all the users from the DB;
 // @auth: Omar Bin Saleh
 const getAllUsers = async (req, res, next) => {
@@ -62,7 +62,7 @@ const getAllUsers = async (req, res, next) => {
 }
 
 // @name: loginUser
-// @path: POST /user/login
+// @path: POST /users/login
 // @desc: allow an existing user to login
 // @auth: Omar Bin Saleh 
 const loginUser = async (req, res, next) => {
@@ -100,7 +100,7 @@ const loginUser = async (req, res, next) => {
 };
 
 // @name: getUserProfile
-// @path: GET /user/profile
+// @path: GET /users/profile
 // @midd: authUser > getUserProfile 
 // @desc: return profile information of a logged-in user
 // @auth: Omar Bin Saleh
@@ -109,7 +109,7 @@ const getUserProfile = async (req, res, next) => {
 };
 
 // @name: logoutUser
-// @path: GET /user/logout
+// @path: GET /users/logout
 // @midd: authUser > logoutUser
 // @desc: allow user to logout of the system
 // @auth: Omar Bin Saleh
