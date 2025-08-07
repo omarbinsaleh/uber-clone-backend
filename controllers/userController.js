@@ -109,12 +109,12 @@ const getUserProfile = async (req, res, next) => {
 // @auth: Omar Bin Saleh
 const logoutUser = async (req, res, next) => {
    try {
-      // step 1: clear the token from the cookies
-      res.crearCookie('token');
-
-      // step 2: mark token as black listed token
+      // step 1: save the token in the database as black listed token
       const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
       const blacklistToken = await blacklistTokenModel({ token });
+      
+      // step 2: clear the token from the cookies
+      res.crearCookie('token');
 
       // step 3: send a response to the front end with the black listed token
       res.status(200).json({message: 'User logged out successfully', blacklistToken});

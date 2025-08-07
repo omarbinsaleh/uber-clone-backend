@@ -714,8 +714,8 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
 `logoutUser` controller is a controller function that handle all the functionality specific to logout user API end point. The following are how the controller are implemented
 
 - Create a function named `logoutUser` in the `./controllers/userControllers.js` file
+- Save the token in the database and mark it as blacklisted token
 - In the function body, Clear token from the cookies using `req.clearCookie(tokenName)`
-- Save the token in the database and marks the token as blacklisted token
 - Send a response to the front end with a success message and the blacklisted token
 - If something goes wrong in the process, catch the error and send an error response to the front end with the error and an error message.
   Here is how the `./controllers/userController.js` file looks like at this point:
@@ -836,13 +836,13 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
   // @auth: Omar Bin Saleh
   const logoutUser = async (req, res, next) => {
     try {
-      // step 1: clear the token from the cookies
-      res.crearCookie("token");
-
-      // step 2: mark token as black listed token
+      // step 1: mark the token as black listed token
       const token =
         req.cookies?.token || req.headers.authorization?.split(" ")[1];
       const blacklistToken = await blacklistTokenModel({ token });
+
+      // step 2: clear the token from the cookies
+      res.crearCookie("token");
 
       // step 3: send a response to the front end with the black listed token
       res
@@ -864,6 +864,160 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
     logoutUser,
   };
   ```
+
+## Captain Specific API End Points Implementation
+
+- Create a mongoose Schema for the captain model in the `./models/captainModel.js` file and using the `captainSchema`, Create a Model for the captain and finally export the `captainModel` from the `./models/captainModel.js` file. This is how the `./models/captainModel.js` file looks like:
+  ```jsx
+    // import dependencies
+    const mongoose = require('mongoose');
+    const bcrypt = require('bcrypt');
+    const jwt = require('jsonwebtoken');
+
+    // define captain shema
+    const captainSchema = new mongoose.Schema({
+      fullName: {
+        firstName: {
+          type: String,
+          required: true,
+          minlength: [3, 'First name must be at least 3 characters long']
+        },
+        lastName: {
+          type: String,
+          minlength: [3, 'Last name must be at least 3 characters long']
+        }
+      },
+      email: {
+        type: String,
+        required: true,
+        unique: true,
+        minlength: [5, 'Email must be at least 5 characters long']
+      },
+      password: {
+        type: String,
+        required: true,
+        select: false
+      },
+      socketId: {
+        type: String
+      },
+      status: {
+        type: String,
+        enum: ['active', 'inactive'],
+        default: 'inactive'
+      },
+      vehicle: {
+        color: {
+          type: String,
+          required: true,
+          minlength: [3, 'Color must be at least 3 character']
+        },
+        plate: {
+          type: String,
+          required: true,
+          minlength: [3, 'Plate must be at least 3 characters long']
+        },
+        capacity: {
+          type: Number
+          required: true,
+          min: [1, 'Capacity must be at least 1']
+        },
+        vehicleType: {
+          type: String,
+          required: true,
+          enum: ['car', 'motorcycle', 'auto']
+        }
+      },
+      location: {
+        lat: {
+          type: Number
+        },
+        lng: {
+          type: Number
+        }
+      }
+    })
+
+    // add methods
+    captainSchema.methods.generateToken = () => {
+      const token = jwt.sign({_id: this._id}, process.env.JWT_SECRET, {expiresIn: '24h'});
+      return token;
+    }
+
+    captainSchema.methods.comparePassword = async (password) => {
+      return await bcrypt.compare(password, this.password);
+    }
+
+    captainSchema.statics.hashPassword = async (password) => {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      return hashedPassword;
+    }
+
+    // create captain model
+    const captainModel = mongoose.model('Captains', captainSchema);
+
+    // export the captain model
+    module.exports = captainModel;
+  ```
+- Create a file named `captainRoutes.js` in the `./routes` directory. In the `./routes/captainRoutes.js` file, specify all the API end points specific to the captain and exports them from there.
+- Import the captain routes in the `app.js` file and configure a captain route. Here is how the `app.js` file looks like at this point:
+  ```jsx
+  // import dependencies
+  require('dotenv').config();
+  const express = require('express');
+  const cors = require('cors');
+  const connectToDb = require('./db/db');
+  const userRoutes = require('./routes/userRoutes.js');
+  const serverRoutes = require('./routes/serverRoutes.js');
+  const captainRoutes = require('./routes/captainRoutes.js')
+
+  // step 1: initialize the express app
+  const app = express();
+
+  // step 2: application level middlewares configuration
+  app.use(cors());
+
+  // step 3: connect to the database
+  connectToDb()
+
+  // step 4: define routes
+  app.use('/', serverRoutes)
+  app.use('/user', userRoutes);
+  app.use('/captain', captainRoutes); //  <--- captain routes configuration
+
+  // step 5: export the app instance
+  module.exports = app;
+  ```
+- Create a file named `captainRoutes.js` in the `./routes` directory. This `./routes/captainRoute.js` file will contain all the specification of the captain specific API end points. Here is how the `./routes/captainRoutes.js` file looks like at this point:
+  ```jsx
+  // import dependencies
+  const express = require('express');
+  const captainControllers = require('../controllers/captainController.js');
+  const captainMiddleware = require('../middleware/captainMiddleware.js');
+
+  // initialize captain router
+  const captainRouter = express.Router();
+
+  // define API end point for captain
+  captainRouter.post('/register', captainControllers.registerCaptain);
+  captainRouter.post('/login', captainControllers.loginCaptain);
+  captainRouter.get('/profile', captainMiddleware.authCaptain, captainControllers.getCaptainProfile);
+  captainRouter.get('/logout', captainMiddleware.authCaptain, captainControllers.logoutCaptain);
+
+  // exports captain router
+  module.exports = captainRouter;
+  ```
+
+- Define all the necessary middleware functions in the `./middleware/captainMiddleware.js` file.
+- Create a file named `captainController.js` in the `./controllers` directory and define all the controllers specific to captain routes in the `./controllers/captainController.js` file and export them all from there.
+- If needed, define appropriate services for the controllers in the `./services/captainService.js` file and export them
+
+#### The implementation of the `captainModel` - (A Model for the Captain)
+
+
+### `authCaptain` Middleware Implementation
+Create a middleware function in the `./middleware/captainMiddleware.js` file and named it as `authCaptain` which will basically authenticate the idendtity of a captain using token validation.
+
 
 ### Mongoose Schema
 
