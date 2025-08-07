@@ -124,7 +124,7 @@ const logoutUser = async (req, res, next) => {
       const blacklistToken = await blacklistTokenModel({ token });
 
       // step 2: clear the token from the cookies
-      res.crearCookie('token');
+      res.clearCookie('token')
 
       // step 3: send a response to the front end with the black listed token
       res.status(200).json({ message: 'User logged out successfully', blacklistToken });
