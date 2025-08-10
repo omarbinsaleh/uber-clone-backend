@@ -44,7 +44,52 @@
   }
   ```
 
-- Create a function named `connectToDb` in `./bd/db.j` file to make a connection to the DB using the `mongoose.connect(URI)` method provided by the `mongoose` package.
+  - Create the `server.js` in the root whose purpose is to serve as the main entry point of this backend server. This file will be using to define or create and run a http server.
+
+  ```jsx
+  const http = require("http");
+  const app = require("./app.js");
+  const port = process.env.SERVER_PORT || 5000;
+
+  // step 1: create a http server
+  const server = http.createServer(app);
+
+  // step 2: listen the server
+  server.listen(port, () => {
+    console.log(`Uber backend server is running on: http://localhost:${port}`);
+  });
+  ```
+
+- Set the express app for the server by creating an `app.js` file in the root directory which is `Backend` . It is the `app.js` file in which an express instance named `app` will be initialized, all the application level middleware will be configured, a connection to the DB will be established and then all the possible API routes will be configured and finally the instance of express application `app` will be exposed to external files so that the other files like the `server.js` file can use the `app`.
+
+  ```jsx
+  require("dotenv").config();
+  const express = require("express");
+  const cors = rquire("cors");
+  const connectToDb = require("./bd/db.js");
+  const serverRoutes = require("./routes/serverRoutes.js");
+  const userRoutes = require("./routes/userRoutes.js");
+  const captainRoutes = require("./routes/captainRoutes.js");
+
+  // step 1: Initialize an express app instance
+  const app = express();
+
+  // step 2: configure app level middleware
+  app.use(cors());
+
+  // step 3: connect to the DB
+  connectToDb();
+
+  // step: 4: API routes configuration
+  app.use("/", serverRoutes);
+  app.use("/users", userRoutes);
+  app.use("/captains", captainRoutes);
+
+  // export the app instance
+  module.exports = app;
+  ```
+
+- Create a function named `connectToDb` in `./bd/db.j` file to establish a connection to the mongoDB database using the `mongoose.connect(URI)` method provided by the `mongoose` package.
 
   ```jsx
   const mongoose = require("mongoose");
@@ -61,46 +106,34 @@
   module.exports = connectToDb;
   ```
 
-- Create an `app.js` file in the root directory which is `Backend` . It is the `app.js` file in which an express instance named `app` will be initialized, all the application level middleware will be configured, connection to the DB will be established and finally all the possible routes will be defined
+- **Create necessary Models in the `./models` directory**
 
-  ```jsx
-  require("dotenv").config();
-  const express = require("express");
-  const cors = rquire("cors");
-  const connectToDb = require("./bd/db.js");
-  const controllers = require("./controllers/helloWorld.js");
+  - Create a Model for Users in the `./models/userModel.js` file
+  - Create a Model for Captains in the `./models/captainModel.js` file
 
-  // step 1: Initialize an express app instance
-  const app = express();
+- **Create API end points**
 
-  // step 2: configure app level middleware
-  app.use(cors());
+  - Define all the server specific API end point in the `./routes/serverRoutes.js` file with appropriate middleware and controllers attached to the end point.
+  - Define all the user specific API end point in the `./routes/userRoutes.js` file with appropriate middleware and controllers attached to the end point.
+  - Define all the captain specific API end point in the `./routes/captainRoutes.js` file with appropriate middleware and controllers attached to the end point.
 
-  // step 3: connect to the DB
-  connectToDb();
+- **Create Middleware for the API end point**
 
-  // step: 4: defind routes
-  app.get("/", controllers.helloWorld);
+  - Define all the user authentication related Middleware functions in the `./middleware/authMiddleware.js` file.
+  - Define all the captain related middleware functions in the `./middleware/captainMiddleware.js` file
+  - Define all the server specific middleware functions in the `./middleware/serverMiddleware.js` file
 
-  // export the app instance
-  module.exports = app;
-  ```
+- **Implement Controllers for the API end point**
 
-- Create the `server.js` in the root whose purpose is to serve as the main entry point of this backend server. This file will be using to define or create and run a http server.
+  - Define all the controller functions required for the user specific API end point in the `./controllers/userControllers.js` file.
+  - Define all the controller functions required for the captain specific API end point in the `./controllers/captainControllers.js` file.
+  - Define all the controller functions required for the server specific API end point in the `./controllers/serverController.js` file.
 
-  ```jsx
-  const http = require("http");
-  const app = require("./app.js");
-  const port = process.env.SERVER_PORT || 5000;
+- **Create the necessary services in the `./services/` directory**
 
-  // step 1: create a http server
-  const server = http.createServer(app);
-
-  // step 2: listen the server
-  server.listen(port, () => {
-    console.log(`Uber backend server is running on: http://localhost:${port}`);
-  });
-  ```
+  - Create services required for user specifc controllers or middleware in the `./services/userSevices.js` file.
+  - Create services required for the captain specific controllers or middleware in the `./services/captainServices.js` file
+  - Create services required for the server specific controllers or middleware in the `./services/serverServices.js` file
 
 - Then open the terminal and make sure you are in the root directory `Backend` and then run the server using the following command
   ```bash
@@ -1522,12 +1555,10 @@ const loginCaptain = async (req, res, next) => {
 // @desc: Return a captain's profile information
 // @auth: Omar Bin Saleh
 const getCaptainProfile = async (req, res, next) => {
-  res
-    .status(200)
-    .json({
-      captain: req.captain,
-      message: "Captain profile is returned successfully",
-    });
+  res.status(200).json({
+    captain: req.captain,
+    message: "Captain profile is returned successfully",
+  });
 };
 
 // @name: logoutCaptain
