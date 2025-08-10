@@ -98,9 +98,9 @@ const loginUser = async (req, res, next) => {
       res.cookie('token', token);
 
       // step 8: send the user and the token to the font end
-      res.status(200).json({ user, token, success: true, message: 'User loggedin successfully' });
+      res.status(200).json({ user: {_id: user._id, fullName: user.fullName, email: user.email, __v: user.__v}, token, success: true, message: 'User loggedin successfully' });
    } catch (error) {
-      res.status(401).json({ success: false, message: error.message, error });
+      res.status(500).json({ success: false, message: error.message, error });
    }
 };
 
