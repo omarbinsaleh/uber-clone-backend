@@ -155,7 +155,7 @@
 
 ## Server Specific API Endpoint Implementation
 
-### **1. `GET http://loalhost:400/` end point**
+### **1. ` GET / ` End Point**
 
 #### Configure Server Routes
 
@@ -189,7 +189,7 @@ app.use("/captains", captainRoutes);
 module.exports = app;
 ```
 
-#### Define the API end point
+#### Define the API End Point
 
 Create a routes directory named`routes` in the root and within the `./routes` create a file named `serverRouter.js` in which all the server specific API endpoints will be defined and then finally will be exposed to the other external files by exporting them all. Here is how the `./routes/sererRouter.js` file looks like at this point.
 
@@ -207,7 +207,7 @@ module.exports = serverRouter;
 
 Here the `greetPople` is a controller defined in the `./controllers/serverController.js` file which will be created in the next step. The `serverController.js` will be holding all the required controller function definitions that are specific to the server only.
 
-#### Create Controllers for the end point
+#### Implement the Necessary Controllers for the End Eoint
 
 Create a directory name `controllers` in the root and inside of this `./controllers` directory create the `serverController.js` file which will actually expose all the controller definitions specific to the server only. Here is how the `./controllers/serverController.js` file looks like at this moment.
 
@@ -230,13 +230,9 @@ const greetPeople = (req, res, next) => {
 module.exports = { helloWorld, greetPeople };
 ```
 
-- From now on, for any new server specific API implementation, we just need to perform the following steps
-  - Define a controller function for the respective API endpoint in the `./controllers/serverController.js` file and then export that controller function so that other files can use that later, if needed.
-  - Import the the server controllers in the `./routes/serverRouters.js` file and create the API endpoint there using the corresponding server specific controller defined in the `./controllers/serverController.js` file earlier.
-
 ## User Specific API Endpoints Implementation
 
-### ` POST /users/register ` - Register a new user;
+### **01.` POST /users/register ` - Register a New User**;
 
 #### Create a Model for User
 
@@ -315,9 +311,9 @@ const userModel = mongoose.model("User", userSchema);
 module.exports = userModel;
 ```
 
-#### Configure Routes for the User API End Points
+#### Configure Routes for API End Points
 
-Configure the user specific routes in the `./app.js` file.
+Configure the user specific routes in the `./app.js ` file.
 
 ```jsx
 require("dotenv").config();
@@ -348,23 +344,23 @@ app.use("/captains", captainRoutes);
 module.exports = app;
 ```
 
-#### Define the `POST /users/register` End Point
+#### Define the `POST /users/register` API End Point
 
 Create a file named `userRouter.js` in the `./routes/` directory and define all API end point specific to user in that `./routes/userRouter.js` file and at the end make them exposed to other files.
 
 ```jsx
 const express = require("express");
 const userRouter = express.Router();
-const userController = require("./controllers/userController.js");
+const userControllers = require("./controllers/userController.js");
 
 // define user specific API end point
-userRouter.post("/register", userController.registerUser); // <--- register user API end point
+userRouter.post("/register", userControllers.registerUser); // <--- register user API end point
 
 // export user router
 module.exports = userRouter;
 ```
 
-#### Create Controllers for End point
+#### Create Controllers Required for the End point
 
 Create a fine named `userController.js` in the `./controllers/` directory.
 Define all the user specific controllers in the `./controllers/userController.js` file and export them all at the end from this file.
@@ -386,7 +382,8 @@ Define all the user specific controllers in the `./controllers/userController.js
 - set the token in the cookies using the `res.cookie(tokenName, token)` method.
 - Send the `token` and the `user` to client with the status code 201
 - If anything goes wrong or error happens in the process, then catch and handle the error and send response to the client with proper status code and message.
-  Here is how the `./controllers/userController.js` file looks like at this point:
+
+Here is how the `./controllers/userController.js` file looks like at this point:
 
 ```jsx
 const { validationResult } = require("express-validator");
@@ -433,9 +430,9 @@ const registerUser = async (req, res, next) => {
     res.cookie("token", token);
 
     // step 8: send a success response to the client
-    res.status(201).json({ token, user });
+    res.status(201).json({ success: true, message: 'Registered User Successfully', token, user });
   } catch (error) {
-    res.status(500).json({ error, message: error.message });
+    res.status(500).json({ success false, error, message: error.message });
   }
 };
 
@@ -443,7 +440,7 @@ const registerUser = async (req, res, next) => {
 module.exports = { registerUser };
 ```
 
-#### Create Services for the End Poit
+#### Create Services for the End Point
 
 - Create a directory in the root and name it as `services` . Then create a file in the `./services` directory and name that file `userServices.js` .
 - Create a service named `createUser` in the `./services/userServices.js` file whose purpose is to create a new user in the MongoDB database only and return the new user.
@@ -470,7 +467,62 @@ const createUser = async ({ firstName, lastName, email, password }) => {
 module.exports = { createUser };
 ```
 
-### `loginUser` Controller Implementation
+### **02. ` POST users/loging ` - Login User**
+
+#### Configure Routes for the User API
+
+If not done yet, configure routes for the user API end points in the ` ./app.js ` file. Here is the current sate of the ` ./app.js ` file
+
+```jsx
+require("dotenv").config();
+const express = reuire("express");
+const cors = require("cors");
+const connectToDb = require("./db/bd.js");
+const serverRoutes = require("./routes/serverRouter.js");
+const userRoutes = require("./routes/userRouter.js");
+
+// step 1: initialize the express app
+const app = express();
+
+// step 2: configure app level middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// step 3: connect to the DB
+connectToDb();
+
+// step: 4: API routes configuration
+app.use("/", serverRoutes); //  <--- Server Specific API Routes
+app.use("/users", userRoutes); // <--- User Specific API Routes (Done already)
+app.use("/captains", captainRoutes);
+
+// step 5: export the app instance
+module.exports = app;
+```
+
+#### Define the `POST /users/login ` API End Point
+
+If not done yet, Create a file named `userRoutes.js` in the `./routes/` directory and define the the API end point ` POST /users/login ` the `./routes/userRoutes.js ` file. Here is the current state of the ` ./routes/userRoutes.js ` file
+
+```jsx
+const express = require("express");
+const userRouter = express.Router();
+const userControllers = require("./controllers/userController.js");
+
+// define user specific API end point
+userRouter.post("/register", userControllers.registerUser); // <--- register user API end point
+userRotues.post("/login", userControllers.loginUser) //  <--- Login an existing user
+
+
+// export user router
+module.exports = userRouter;
+```
+
+#### Implement the Controllers Required for the End Point
+
+##### The Implementation of the ` loginUser ` Controller
 
 `loginUser` is a controller function which handles all the process of login an existing user in the system. The followings are the implementation of this controller
 
@@ -486,94 +538,95 @@ module.exports = { createUser };
 - Generate a token for authentication
 - Set the token in the cookies using `res.cookie(tokenName, token)` method.
 - Then send user information and the token to the front end with the status code 200 and a success message.
-  Here is how the `./controllers/userController.js` file looks like at this point
 
-  ```jsx
-  // dependencies
-  const { validationResult } = require("express-validator");
-  const userModel = require("../models/userModels.js");
-  const userServices = require("../services/userService.js");
+Here is how the `./controllers/userController.js` file looks like at this point
 
-  // @name: registerUser
-  // @path: POST /user/register
-  // @desc: Create a new user
-  const registerUser = async (req, res, next) => {
-    try {
-      // step 1: extract data from the request body
-      const { fullName, email, password } = req.body;
+```jsx
+// dependencies
+const { validationResult } = require("express-validator");
+const userModel = require("../models/userModels.js");
+const userServices = require("../services/userService.js");
 
-      // step 2: handle firstName, email and password validation errors
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
-
-      // step 3: hash the password
-      const hashedPassword = await userModel.hashedPassword(password);
-
-      // step 4: create a new user
-      const user = await userServices.createUser({
-        firstName: fullName.firstName,
-        lastName: fullName.lastName,
-        email,
-        password: hashedPassword,
-      });
-
-      // step 5: generate token
-      const token = user.generateAuthToken();
-
-      // step 6: set the token in the cookies
-      res.cookie("token", token);
-
-      // step 7: send a success response to the client
-      res.status(201).json({ token, user });
-    } catch (error) {
-      res.status(500).json({ error, message: error.message });
-    }
-  };
-
-  // @name: loginUser
-  // @path: POST /user/login
-  // @desc: login user into the system
-  const loginUser = async (req, res, next) => {
+// @name: registerUser
+// @path: POST /user/register
+// @desc: Create a new user
+const registerUser = async (req, res, next) => {
+  try {
     // step 1: extract data from the request body
-    const { email, password } = req.body;
+    const { fullName, email, password } = req.body;
 
-    // step 2: email and password error validation
+    // step 2: handle firstName, email and password validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ success: false, message: 'Invalid Email or Password', errors: errors.array() });
     }
 
-    // step 3: find user in the database with the email
-    const user = await userModel.findOne({ email }).select("+password");
+    // step 3: hash the password
+    const hashedPassword = await userModel.hashedPassword(password);
 
-    // step 4: check if the user already exists
-    if (!user) {
-      res.status(401).json({ message: "Invalid email or password" });
-    }
+    // step 4: create a new user
+    const user = await userServices.createUser({
+      firstName: fullName.firstName,
+      lastName: fullName.lastName,
+      email,
+      password: hashedPassword,
+    });
 
-    // step 5: check if the password is matching
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      res.status(401).json({ message: "Invalid email or password" });
-    }
+    // step 5: generate token
+    const token = user.generateAuthToken();
 
-    // step 6: generate the authentication token
-    const token = await user.generateToken();
-
-    // step 7: set the token in the cookies
+    // step 6: set the token in the cookies
     res.cookie("token", token);
 
-    // step 8: send the user and the token to the font end
-    res
-      .status(200)
-      .json({ user, token, message: "User loggedin successfully" });
-  };
+    // step 7: send a success response to the client
+    res.status(201).json({ success: false, message: 'Registered user successfully', token, user });
+  } catch (error) {
+    res.status(500).json({ success: false, error, message: error.message });
+  }
+};
 
-  // export the user controllers
-  module.exports = { registerUser, loginUser };
-  ```
+// @name: loginUser
+// @path: POST /user/login
+// @desc: login user into the system
+const loginUser = async (req, res, next) => {
+  // step 1: extract data from the request body
+  const { email, password } = req.body;
+
+  // step 2: email and password error validation
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: 'Invalid email or password', errors: errors.array() });
+  }
+
+  // step 3: find user in the database with the email
+  const user = await userModel.findOne({ email }).select("+password");
+
+  // step 4: check if the user already exists
+  if (!user) {
+    res.status(401).json({success: false, message: "Invalid email or password" });
+  }
+
+  // step 5: check if the password is matching
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) {
+    res.status(401).json({ success: false, message: "Invalid email or password" });
+  }
+
+  // step 6: generate the authentication token
+  const token = await user.generateToken();
+
+  // step 7: set the token in the cookies
+  res.cookie("token", token);
+
+  // step 8: send the user and the token to the font end
+  res
+    .status(200)
+    .json({ user, token, success: false, message: "User loggedin successfully" });
+};
+
+// export the user controllers
+module.exports = { registerUser, loginUser };
+```
 
 ### `getUserProfile` Controller Implementation
 
