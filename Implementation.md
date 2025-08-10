@@ -155,7 +155,7 @@
 
 ## Server Specific API Endpoint Implementation
 
-### **1. ` GET / ` End Point**
+### **1. `GET /` End Point**
 
 #### Configure Server Routes
 
@@ -232,7 +232,7 @@ module.exports = { helloWorld, greetPeople };
 
 ## User Specific API Endpoints Implementation
 
-### **01.` POST /users/register ` - Register a New User**;
+### **01.`POST /users/register` - Register a New User**;
 
 #### Create a Model for User
 
@@ -467,11 +467,11 @@ const createUser = async ({ firstName, lastName, email, password }) => {
 module.exports = { createUser };
 ```
 
-### **02. ` POST users/loging ` - Login User**
+### **02. `POST users/loging` - Login User**
 
 #### Configure Routes for the User API
 
-If not done yet, configure routes for the user API end points in the ` ./app.js ` file. Here is the current sate of the ` ./app.js ` file
+If not done yet, configure routes for the user API end points in the `./app.js` file. Here is the current sate of the `./app.js` file
 
 ```jsx
 require("dotenv").config();
@@ -504,7 +504,7 @@ module.exports = app;
 
 #### Define the `POST /users/login ` API End Point
 
-If not done yet, Create a file named `userRoutes.js` in the `./routes/` directory and define the the API end point ` POST /users/login ` the `./routes/userRoutes.js ` file. Here is the current state of the ` ./routes/userRoutes.js ` file
+If not done yet, Create a file named `userRoutes.js` in the `./routes/` directory and define the the API end point `POST /users/login` the `./routes/userRoutes.js ` file. Here is the current state of the `./routes/userRoutes.js` file
 
 ```jsx
 const express = require("express");
@@ -513,8 +513,7 @@ const userControllers = require("./controllers/userController.js");
 
 // define user specific API end point
 userRouter.post("/register", userControllers.registerUser); // <--- register user API end point
-userRotues.post("/login", userControllers.loginUser) //  <--- Login an existing user
-
+userRotues.post("/login", userControllers.loginUser); //  <--- Login an existing user
 
 // export user router
 module.exports = userRouter;
@@ -522,7 +521,7 @@ module.exports = userRouter;
 
 #### Implement the Controllers Required for the End Point
 
-##### The Implementation of the ` loginUser ` Controller
+##### The Implementation of the `loginUser` Controller
 
 `loginUser` is a controller function which handles all the process of login an existing user in the system. The followings are the implementation of this controller
 
@@ -558,7 +557,11 @@ const registerUser = async (req, res, next) => {
     // step 2: handle firstName, email and password validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ success: false, message: 'Invalid Email or Password', errors: errors.array() });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Email or Password",
+        errors: errors.array(),
+      });
     }
 
     // step 3: hash the password
@@ -579,7 +582,12 @@ const registerUser = async (req, res, next) => {
     res.cookie("token", token);
 
     // step 7: send a success response to the client
-    res.status(201).json({ success: false, message: 'Registered user successfully', token, user });
+    res.status(201).json({
+      success: false,
+      message: "Registered user successfully",
+      token,
+      user,
+    });
   } catch (error) {
     res.status(500).json({ success: false, error, message: error.message });
   }
@@ -595,7 +603,11 @@ const loginUser = async (req, res, next) => {
   // step 2: email and password error validation
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, message: 'Invalid email or password', errors: errors.array() });
+    return res.status(400).json({
+      success: false,
+      message: "Invalid email or password",
+      errors: errors.array(),
+    });
   }
 
   // step 3: find user in the database with the email
@@ -603,13 +615,17 @@ const loginUser = async (req, res, next) => {
 
   // step 4: check if the user already exists
   if (!user) {
-    res.status(401).json({success: false, message: "Invalid email or password" });
+    res
+      .status(401)
+      .json({ success: false, message: "Invalid email or password" });
   }
 
   // step 5: check if the password is matching
   const isMatch = await user.comparePassword(password);
   if (!isMatch) {
-    res.status(401).json({ success: false, message: "Invalid email or password" });
+    res
+      .status(401)
+      .json({ success: false, message: "Invalid email or password" });
   }
 
   // step 6: generate the authentication token
@@ -619,16 +635,177 @@ const loginUser = async (req, res, next) => {
   res.cookie("token", token);
 
   // step 8: send the user and the token to the font end
-  res
-    .status(200)
-    .json({ user, token, success: false, message: "User loggedin successfully" });
+  res.status(200).json({
+    user,
+    token,
+    success: false,
+    message: "User loggedin successfully",
+  });
 };
 
 // export the user controllers
 module.exports = { registerUser, loginUser };
 ```
 
-### `getUserProfile` Controller Implementation
+### **03. `GET /users/profile` - Get Loggedin User's Profile Information**
+
+#### Create Model for the API End Point
+
+If not created yet, Create a Model for the user in the `./models/userModels.js`
+
+If not created yet, Create a Model for the Black List Token in the `./models/blacklistTokenModel.js`
+
+##### `blacklistTokenModel` Model Implementation
+
+`blacklistTokenModel` is a model to store all the black listed token in the databas. When a user logout, the logout API will take the token, which the user got after successfull login or registeration as a new user, and mark to the token in the database as a black listed token. The following are the step by step implementation of the model
+
+- Create a file named `blacklistTokenModel.js` in the `./mdodels` directory. In the `./models/blacklistTokenModel.js` file, create the schema for a blacklist token in such way that the blacklist token should automatically be deleted from the database after 24 hours from their creation.
+- Using the `blacklistTokenSchema`, create a model and export it.
+
+  Here is how the `./models/blacklistTokenModel.js` file looks like at this point
+
+  ```jsx
+  // import dependencies
+  const mongoose = require("mongoose");
+
+  // define schema for blacklist token
+  const blacklistTokenSchema = new mongoose.Schema({
+    token: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    createAt: {
+      type: Date,
+      default: Date.now,
+      expires: 86400, // 24 hours in seconds
+    },
+  });
+
+  // create model for blacklist token
+  const blacklistTokenModel = mongoose.model(
+    "BlacklistTokens",
+    blacklistTokenSchema
+  );
+
+  // exports the blacklistTokenModel
+  module.exports = blacklistTokenModel;
+  ```
+
+#### Configure Routes for the User API
+
+If not done yet, configure routes for the user API end points in the `./app.js` file. Here is the current sate of the `./app.js` file
+
+```jsx
+require("dotenv").config();
+const express = reuire("express");
+const cors = require("cors");
+const connectToDb = require("./db/bd.js");
+const serverRoutes = require("./routes/serverRouter.js");
+const userRoutes = require("./routes/userRouter.js");
+
+// step 1: initialize the express app
+const app = express();
+
+// step 2: configure app level middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// step 3: connect to the DB
+connectToDb();
+
+// step: 4: API routes configuration
+app.use("/", serverRoutes); //  <--- Server Specific API Routes
+app.use("/users", userRoutes); // <--- User Specific API Routes (Done already)
+app.use("/captains", captainRoutes);
+
+// step 5: export the app instance
+module.exports = app;
+```
+
+#### Define the `GET /users/profile ` API End Point
+
+If not done yet, Create a file named `userRoutes.js` in the `./routes/` directory and define the the API end point `GET /users/profile` the `./routes/userRoutes.js ` file. Here is the current state of the `./routes/userRoutes.js` file
+
+```jsx
+const express = require("express");
+const userRouter = express.Router();
+const userControllers = require("./controllers/userController.js");
+
+// define user specific API end point
+userRouter.post("/register", userControllers.registerUser); // <--- register user API end point
+userRotues.post("/login", userControllers.loginUser); //  <--- Login an existing user
+userRoutes.get("/profile", userControllers.getUserProfile); // <--- Get loggedin user's profile information
+
+// export user router
+module.exports = userRouter;
+```
+
+#### Implement Middleware for the API End Point
+
+##### `authUser` Middleware Implementation
+
+`authUser` is a middleware function defined in the `./middleware/uathMiddleware.js` file. The middleware basically authenticates a user using token verification and add the user information in the `request` object, if it can authenticate the user successfully. The implementation of the middleware is as follows:
+
+- Extract the `token` from the `req.cookies` or `req.headers.authorization` .
+- Check if the `token` is found or not. If not, then terminate the request-response cycle and send an error message saying ‘Unauthorized access’ to the front end with status code 401.
+- If not defined already, then define a model named `blacklistTokenModel` in the `./models/blacklistTokenModel.js` file for the black listed token
+- Import the `blacklistTokenModel` model from the `./models/blacklistTokenModel.js` file
+- Using the `blacklistTokenModel`, Check if the token is black listed already or not. If the token is found to be a black listed token then terminate the request-response cycle and send an error message saying "Unauthorized access" to the front end with status code 401.
+- Decode the token using `jwt.verify(token, secret)` method which ultimately return a decoded object containing the user ID ( i.e. `_id` ) within it
+- Now find the user from the database using the user ID found in the decoded object.
+- Add the user information in the `request` object with a key `user` so that the other middleware or controller function that gets execute after this middleware can access the user information by `req.user` .
+
+Here is how the `./middleware/authMiddleware.js` file looks like at this point:
+
+```jsx
+const userModel = require("../models/userModel.js");
+const jwt = require("jsonwebtoken");
+const blacklistTokenModel = require("../mdoels/blacklistTokenModel.js");
+
+// @name: authUser
+// @desc: Authenticate a user by using the token validation
+// @auth: Omar Bin Saleh
+const authUser = async (req, res, next) => {
+  // step 1: check if the token is found or not
+  const token = req.cookies?.token || req.headers?.authorization?.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized access" });
+  }
+
+  // step 2: check if the token is black listed
+  const isBlackListed = await blacklistTokenModel.findOne({ token });
+  if (isBlackListed) {
+    return res.status(401).json({ message: "Unauthorized access" });
+  }
+
+  try {
+    // step 3: decode the token
+    const decodedObj = jwt.verify(token, process.env.JWT_SECRET);
+
+    // step 4: check if the user is found or not
+    const user = await userModel.findOne({ _id: decodedObj._id });
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
+
+    // step 5: add the user information in the request object
+    req.user = user;
+    return next();
+  } catch (error) {
+    return res.status(401).json({ message: "Unauthorized access" });
+  }
+};
+
+// exports all auth middleware
+module.exports = { authUser };
+```
+
+#### Implement the Contorllers for the API End Point
+
+##### `getUserProfile` Controller Implementation
 
 This controller function will control and handle all the functionality that are associated with returning a logged-in user profile information. The followings is how the controller is implemented step by step:
 
@@ -656,7 +833,11 @@ const registerUser = async (req, res, next) => {
     // step 2: handle firstName, email and password validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Email or Password",
+        errors: errors.array(),
+      });
     }
 
     // step 3: hash the password
@@ -674,9 +855,14 @@ const registerUser = async (req, res, next) => {
     const token = user.generateAuthToken();
 
     // step 6: send a success response to the client
-    res.status(201).json({ token, user });
+    res.status(201).json({
+      success: true,
+      message: "Registered user successfully",
+      token,
+      user,
+    });
   } catch (error) {
-    res.status(500).json({ error, message: error.message });
+    res.status(500).json({ success: false, error, message: error.message });
   }
 };
 
@@ -704,7 +890,11 @@ const loginUser = async (req, res, next) => {
   // step 2: email and password error validation
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    return res.status(400).json({
+      success: false,
+      message: "Invalid Email or Password",
+      errors: errors.array(),
+    });
   }
 
   // step 3: find user in the database with the email
@@ -712,20 +902,29 @@ const loginUser = async (req, res, next) => {
 
   // step 4: check if the user already exists or not
   if (!user) {
-    return res.status(401).json({ message: "Invalid email or password" });
+    return res
+      .status(401)
+      .json({ success: false, message: "Invalid email or password" });
   }
 
   // step 5: check if the password is matching
   const isMatch = await user.comparePassword(password);
   if (!isMatch) {
-    return res.status(401).json({ message: "Invalid email or password" });
+    return res
+      .status(401)
+      .json({ success: false, message: "Invalid email or password" });
   }
 
   // step 6: generate the authentication token
   const token = await user.generateToken();
 
   // step 7: send the user and the token to the font end
-  res.status(200).json({ user, token, message: "User loggedin successfully" });
+  res.status(200).json({
+    success: true,
+    user,
+    token,
+    message: "User loggedin successfully",
+  });
 };
 
 // @name: getUserProfile
@@ -734,7 +933,11 @@ const loginUser = async (req, res, next) => {
 // @desc: return profile information of a logged-in user
 // @auth: Omar Bin Saleh
 const getUserProfile = async (req, res, next) => {
-  res.status(200).json({ user: req.user, message: "User profile is returned" });
+  res.status(200).json({
+    success: true,
+    user: req.user,
+    message: "User profile is returned",
+  });
 };
 
 // exports user's controllers
