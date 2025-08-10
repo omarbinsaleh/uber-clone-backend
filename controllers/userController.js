@@ -25,7 +25,7 @@ const registerUser = async (req, res, next) => {
       }
 
       // step 4: hash the password
-      const hashedPassword = await userModel.hashedPassword(password);
+      const hashedPassword = await userModel.hashPassword(password);
 
       // step 5: create a new user 
       const user = await userServices.createUser({
