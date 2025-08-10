@@ -15,13 +15,13 @@ const registerUser = async (req, res, next) => {
       // step 2: handle firstName, email and password validation errors
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-         return res.status(400).json({ errors: errors.array() })
+         return res.status(400).json({ success: false, errors: errors.array() })
       }
 
       // step 3: check if user exists with the same email
       const isUserExists = await userModel.findOne({ email });
       if (isUserExists) {
-         return res.status(400).json({ message: 'User already exists with this email' });
+         return res.status(400).json({success: false, message: 'User already exists with this email' });
       }
 
       // step 4: hash the password
@@ -42,9 +42,9 @@ const registerUser = async (req, res, next) => {
       res.cookie('token', token);
 
       // step 8: send a success response to the client
-      res.status(201).json({ token, user });
+      res.status(201).json({ token, user, success: true, message: 'User registered successfully!' });
    } catch (error) {
-      res.status(500).json({ error, message: error.message });
+      res.status(500).json({ error, success: false, message: error.message });
    }
 }
 
@@ -54,10 +54,11 @@ const registerUser = async (req, res, next) => {
 // @auth: Omar Bin Saleh
 const getAllUsers = async (req, res, next) => {
    try {
-      res.send({ user: 'all users has been returned successfully' })
+      const users = []
+      res.send({users, success: true, message: 'all users has been returned successfully' })
       next()
    } catch (error) {
-      res.status(500).json({ message: error.message })
+      res.status(500).json({success: false, error, message: error.message })
    }
 }
 
@@ -73,7 +74,7 @@ const loginUser = async (req, res, next) => {
       // step 2: email and password error validation
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-         return res.status(400).json({ errors: errors.array() });
+         return res.status(400).json({success: false, message: 'Invalid email or password', errors: errors.array() });
       }
 
       // step 3: find user in the database with the email
@@ -81,13 +82,13 @@ const loginUser = async (req, res, next) => {
 
       // step 4: check if the user already exists or not
       if (!user) {
-         return res.status(401).json({ message: 'Invalid email or password' });
+         return res.status(401).json({success: false, message: 'Invalid email or password' });
       };
 
       // step 5: check if the password is matching
       const isMatch = await user.comparePassword(password);
       if (!isMatch) {
-         return res.status(401).json({ message: 'Invalid email or password' });
+         return res.status(401).json({ success: false, message: 'Invalid email or password' });
       };
 
       // step 6: generate the authentication token
@@ -97,9 +98,9 @@ const loginUser = async (req, res, next) => {
       res.cookie('token', token);
 
       // step 8: send the user and the token to the font end
-      res.status(200).json({ user, token, message: 'User loggedin successfully' });
+      res.status(200).json({ user, token, success: true, message: 'User loggedin successfully' });
    } catch (error) {
-      res.status(401).json({ message: error.message, error });
+      res.status(401).json({ success: false, message: error.message, error });
    }
 };
 
@@ -109,7 +110,7 @@ const loginUser = async (req, res, next) => {
 // @desc: return profile information of a logged-in user
 // @auth: Omar Bin Saleh
 const getUserProfile = async (req, res, next) => {
-   res.status(200).json({ user: req.user, message: 'User profile is returned' });
+   res.status(200).json({ user: req.user, success: true, message: 'User profile is returned' });
 };
 
 // @name: logoutUser
@@ -127,9 +128,9 @@ const logoutUser = async (req, res, next) => {
       res.clearCookie('token')
 
       // step 3: send a response to the front end with the black listed token
-      res.status(200).json({ message: 'User logged out successfully', blacklistToken });
+      res.status(200).json({ success: true, message: 'User logged out successfully', blacklistToken });
    } catch (error) {
-      res.status(401).json({ message: 'Unauthorized access or Something went wrong' })
+      res.status(401).json({ success: false, message: 'Unauthorized access or Something went wrong' })
    }
 
 };
