@@ -236,7 +236,7 @@ module.exports = { helloWorld, greetPeople };
 
 ## User Specific API Endpoints Implementation
 
-### `POST /users/register` - Register a new user;
+### ` POST /users/register ` - Register a new user;
 
 #### Create a Model for User
 
