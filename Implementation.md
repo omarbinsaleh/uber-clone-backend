@@ -117,9 +117,9 @@
 
 - **Create API end points**
 
-  - Define all the server specific API end point in the `./routes/serverRoutes.js` file with appropriate middleware and controllers attached to the end point.
-  - Define all the user specific API end point in the `./routes/userRoutes.js` file with appropriate middleware and controllers attached to the end point.
-  - Define all the captain specific API end point in the `./routes/captainRoutes.js` file with appropriate middleware and controllers attached to the end point.
+  - Define all the server specific API end point in the `./routes/serverRoutes.js` file with appropriate middleware and controllers being attached to each individual end point.
+  - Define all the user specific API end point in the `./routes/userRoutes.js` file with appropriate middleware and controllers being attached to each individual end point.
+  - Define all the captain specific API end point in the `./routes/captainRoutes.js` file with appropriate middleware and controllers being attached to each individual end point.
 
 - **Create Middleware for the API end point**
 
