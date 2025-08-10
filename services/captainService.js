@@ -6,7 +6,7 @@ const captainModel = require('../models/captainModel.js');
 // @auth: Omar Bin Saleh
 const createCaptain = async ({ firstName, lastName, email, password, color, plate, capacity, vehicleType }) => {
    // step 1: check if any of the fields is missing
-   if (!firstName || !lastName || !email || !password || !color || !plate || !capacity || vehicleType) {
+   if (!firstName || !lastName || !email || !password || !color || !plate || !capacity || !vehicleType) {
       throw new Error('All fields are required');
    }
    try {

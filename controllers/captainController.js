@@ -11,7 +11,7 @@ const blacklistTokenModel = require('../models/blacklistTokenModel.js');
 const registerCaptain = async (req, res, next) => {
    try {
       // step 1: extract necessary information from the request body
-      const { fullName, email, password, vehicle } = request.body;
+      const { fullName, email, password, vehicle } = req.body;
 
       // step 2: perfor error validation for all the field comming through the request body
       const errors = validationResult(req);
@@ -88,7 +88,19 @@ const loginCaptain = async (req, res, next) => {
       res.cookie('token', token);
 
       // step 7: send success response to the frontend with captain information and the token
-      res.status(200).json({ captain, token, success: true, message: 'Captain Login Successful' });
+      res.status(200).json({
+         captain: {
+            _id: captain._id,
+            fullName: captain.fullName,
+            email: captain.email,
+            status: captain.status,
+            vehicle: captain.vehicle,
+            __v: captain.__v
+         },
+         token,
+         success: true,
+         message: 'Captain Login Successful'
+      });
    } catch (error) {
       res.status(400).json({ success: false, error, message: error.message, error });
    };
@@ -100,7 +112,7 @@ const loginCaptain = async (req, res, next) => {
 // @desc: Return a captain's profile information
 // @auth: Omar Bin Saleh
 const getCaptainProfile = async (req, res, next) => {
-   res.status(200).json({captain: req.captain, success: true, message: 'Captain profile is returned successfully'});
+   res.status(200).json({ captain: req.captain, success: true, message: 'Captain profile is returned successfully' });
 };
 
 // @name: logoutCaptain
@@ -112,15 +124,15 @@ const logoutCaptain = async (req, res, next) => {
    try {
       // step 1: save the token in DB as a black listed token
       const token = req.cookies?.token || req.headers?.authorization?.split(' ')[1];
-      const blackListedToken = await blacklistTokenModel.create({token});
+      const blackListedToken = await blacklistTokenModel.create({ token });
 
       // step 2: clear the token from cookies
       res.clearCookie('token');
 
       // step 3: send a success response to the frontend
-      res.status(200).json({blackListedToken, success: true, message: 'User logged out successfully'});
+      res.status(200).json({ blackListedToken, success: true, message: 'User logged out successfully' });
    } catch (error) {
-      res.status(400).json({ success: false, message: error.message, error});
+      res.status(400).json({ success: false, message: error.message, error });
    }
 }
 

@@ -33,6 +33,7 @@
     "description": "",
     "dependencies": {
       "bcrypt": "^6.0.0",
+      "cookie-parser": "^1.4.7",
       "cors": "^2.8.5",
       "dotenv": "^17.2.1",
       "express": "^5.1.0",
@@ -77,8 +78,8 @@
 
   // step 2: configure app level middleware
   app.use(cors());
-  app.use(express.json())
-  app.use(express.urlencoded({extended: true}));
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
 
   // step 3: connect to the DB
@@ -154,67 +155,80 @@
 
 ## Server Specific API Endpoint Implementation
 
-- Define the server specific routes in the `app.js` file using the `app.use(path, routesReferances)` method. Here the `routesReferances` will be defined in `./routes/serverRoutes.js` file and then all the routes defined there will be exposed to external files so that those routes references can be used from the other external files like `app.js` file. Here is how the `./app.js` file looks like at this point.
+### `GET http://loalhost:400/` end point
 
-  ```jsx
-  require("dotenv").config();
-  const express = require("express");
-  const cors = rquire("cors");
-  const connectToDb = require("./bd/db.js");
-  const serverRoutes = require("./routes/serverRouter.js");
+#### Configure Server Routes
 
-  // step 1: Initialize an express app instance
-  const app = express();
+Define the server specific routes in the `app.js` file using the `app.use(path, routesReferances)` method. Here the `routesReferances` will be defined in `./routes/serverRoutes.js` file and then all the routes defined there will be exposed to external files so that those routes references can be used from the other external files like `app.js` file. Here is how the `./app.js` file looks like at this point.
 
-  // step 2: configure app level middleware
-  app.use(cors());
+```jsx
+require("dotenv").config();
+const express = require("express");
+const cors = rquire("cors");
+const connectToDb = require("./bd/db.js");
+const serverRoutes = require("./routes/serverRouter.js");
 
-  // step 3: connect to the DB
-  connectToDb();
+// step 1: Initialize an express app instance
+const app = express();
 
-  // step: 4: defind routes
-  app.get("/", serverRoutes); // this will execute all the server specific routes
+// step 2: configure app level middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-  // export the app instance
-  module.exports = app;
-  ```
+// step 3: connect to the DB
+connectToDb();
 
-- Create a routes directory named`routes` in the root and within the `./routes` create a file named `serverRouter.js` in which all the server specific API endpoints will be defined and then finally will be exposed to the other external files by exporting them all. Here is how the `./routes/sererRouter.js` file looks like at this point.
+// step: 4: API routes configuration
+app.use("/", serverRoutes); //  <-- this will execute all the server specific routes
+app.use("/users", userRoutes);
+app.use("/captains", captainRoutes);
 
-  ```jsx
-  const express = require("express");
-  const serverRouter = express.Router();
-  const serverController = require("../controllers/serverController.js");
+// export the app instance
+module.exports = app;
+```
 
-  // step 1: define all the server specific API
-  serverRouter.get("/", serverController.greetPeople);
+#### Define the API end point
 
-  // step 2: export the serverRouter
-  module.exports = serverRouter;
-  ```
+Create a routes directory named`routes` in the root and within the `./routes` create a file named `serverRouter.js` in which all the server specific API endpoints will be defined and then finally will be exposed to the other external files by exporting them all. Here is how the `./routes/sererRouter.js` file looks like at this point.
 
-  Here the `greetPople` is a controller defined in the `./controllers/serverController.js` file which will be created in the next step. The `serverController.js` will be holding all the required controller function definitions that are specific to the server only.
+```jsx
+const express = require("express");
+const serverRouter = express.Router();
+const serverController = require("../controllers/serverController.js");
 
-- Create a directory name `controllers` in the root and inside of this `./controllers` directory create the `serverController.js` file which will actually expose all the controller definitions specific to the server only. Here is how the `./controllers/serverController.js` file looks like at this moment.
+// step 1: define all the server specific API
+serverRouter.get("/", serverController.greetPeople);
 
-  ```jsx
-  // @name: helloWorld
-  // @path: GET /
-  // @desc: display the 'hello world' message
-  const helloWorld = (req, res, next) => {
-    res.send("Hello World!");
-  };
+// step 2: export the serverRouter
+module.exports = serverRouter;
+```
 
-  // @name: greetPeople
-  // @path: GET /
-  // @desc: welcome people to the Uber-clone-backend-server
-  const greetPeople = (req, res, next) => {
-    res.send("Welcome to the Uber's backend server (cloned)");
-  };
+Here the `greetPople` is a controller defined in the `./controllers/serverController.js` file which will be created in the next step. The `serverController.js` will be holding all the required controller function definitions that are specific to the server only.
 
-  // exports the server controllers
-  module.exports = { helloWorld, greetPeople };
-  ```
+#### Create Controllers for the end point
+
+Create a directory name `controllers` in the root and inside of this `./controllers` directory create the `serverController.js` file which will actually expose all the controller definitions specific to the server only. Here is how the `./controllers/serverController.js` file looks like at this moment.
+
+```jsx
+// @name: helloWorld
+// @path: GET /
+// @desc: display the 'hello world' message
+const helloWorld = (req, res, next) => {
+  res.send("Hello World!");
+};
+
+// @name: greetPeople
+// @path: GET /
+// @desc: welcome people to the Uber-clone-backend-server
+const greetPeople = (req, res, next) => {
+  res.send("Welcome to the Uber's backend server (cloned)");
+};
+
+// exports the server controllers
+module.exports = { helloWorld, greetPeople };
+```
 
 - From now on, for any new server specific API implementation, we just need to perform the following steps
   - Define a controller function for the respective API endpoint in the `./controllers/serverController.js` file and then export that controller function so that other files can use that later, if needed.
@@ -222,9 +236,13 @@
 
 ## User Specific API Endpoints Implementation
 
+### `POST /users/register` - Register a new user;
+
+#### Create a Model for User
+
 - Create a directory named `models` in the root and in that `./models` directory create a file and name it `userModel.js`
 - **Creating a Schema for User Model:**
-  \*\*\*\*Create a user schema in the `./models/userModel.js` file using `new mongoose.Schema()` constructor provided by the `mongoose` package and name it as `userSchema` . This `userSchema` will be used to create the user model.
+  Create a user schema in the `./models/userModel.js` file using `new mongoose.Schema()` constructor provided by the `mongoose` package and name it as `userSchema` . This `userSchema` will be used to create the user model.
 - **Add custom methods**
   There are two ways in mongoose to add custom methods to a Mongoose Model.
   - `schema.methods` : it is a way in Mongoose to add custom Instance-Level functions to a Model. These functions add behavior to individual document and can be accessible on each documents or instances of the Model. In our case, two such methods will be added -
@@ -240,137 +258,120 @@
   - `collectionName` (optional): a String which is used to specify the collection name.
     Here is how the `./models/userModel.js` file looks like at this point:
 
-  ```jsx
-  const mongoose = require("mongoose");
-  const jwt = require("jsonwebtoken");
-  const bcrypt = require("bcrypt");
+```jsx
+const mongoose = require("mongoose");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 
-  // define user schema
-  const userSchema = new mongoose.Schema({
-    fullName: {
-      firstName: {
-        type: String,
-        required: true,
-        minlength: [3, "First name must be at least 3 characters long"],
-      },
-      lastName: {
-        type: String,
-        minlength: [3, "Last name must be at least 3 characters long"],
-      },
-    },
-    email: {
+// define user schema
+const userSchema = new mongoose.Schema({
+  fullName: {
+    firstName: {
       type: String,
       required: true,
-      unique: true,
-      minlength: [5, "Email must be at least 5 characters long"],
+      minlength: [3, "First name must be at least 3 characters long"],
     },
-    password: {
+    lastName: {
       type: String,
-      required: true,
-      select: false,
+      minlength: [3, "Last name must be at least 3 characters long"],
     },
-    socketId: {
-      type: String,
-    },
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    minlength: [5, "Email must be at least 5 characters long"],
+  },
+  password: {
+    type: String,
+    required: true,
+    select: false,
+  },
+  socketId: {
+    type: String,
+  },
+});
+
+// add custom methods to the userSchema
+userSchema.methods.generateAuthToken = function () {
+  const token = jwt.sign({ _id: this._id }, process.env.JWT_SECRET, {
+    expiresIn: "24h",
   });
+  return token;
+};
 
-  // add custom methods to the userSchema
-  userSchema.methods.generateAuthToken = () => {
-    const token = jwt.sign({ _id: this._id }, process.env.JWT_SECRET, {
-      expiresIn: "24h",
-    });
-    return token;
-  };
+userSchema.methods.comparePassword = async function (password) {
+  return await bcrypt.compare(password, this.password);
+};
 
-  userSchema.methods.comparePassword = async (password) => {
-    return await bcrypt.compare(password, this.password);
-  };
+userSchema.statics.hashPassword = async function (password) {
+  return await bcrypt.hash(password, 10);
+};
 
-  userSchema.statics.hashPassword = async (password) => {
-    return await bcrypt.hash(password, 10);
-  };
+// create user model
+const userModel = mongoose.model("User", userSchema);
 
-  // create user model
-  const userModel = mongoose.model("User", userSchema);
+// export the user model
+module.exports = userModel;
+```
 
-  // export the user model
-  module.exports = userModel;
-  ```
+#### Configure Routes for the User API End Points
 
-- Configure the user specific routes in the `./app.js` file.
+Configure the user specific routes in the `./app.js` file.
 
-  ```jsx
-  require("dotenv").config();
-  const express = reuire("express");
-  const cors = require("cors");
-  const connectToDb = require("./db/bd.js");
-  const serverRoutes = require("./routes/serverRouter.js");
-  const userRoutes = require("./routes/userRouter.js");
+```jsx
+require("dotenv").config();
+const express = reuire("express");
+const cors = require("cors");
+const connectToDb = require("./db/bd.js");
+const serverRoutes = require("./routes/serverRouter.js");
+const userRoutes = require("./routes/userRouter.js");
 
-  // step 1: initialize the express app
-  const app = express();
+// step 1: initialize the express app
+const app = express();
 
-  // step 2: application level middlewares configuration
-  app.use(cors());
+// step 2: configure app level middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-  // step 3: connect to the database
-  connectToDb();
+// step 3: connect to the DB
+connectToDb();
 
-  // step 4: routes configuration
-  app.get("/", serverRoutes); // server specific routes
-  app.use("/user", userRoutes); // user specific routes
+// step: 4: API routes configuration
+app.use("/", serverRoutes); //  <--- Server Specific API Routes
+app.use("/users", userRoutes); // <--- User Specific API Routes
+app.use("/captains", captainRoutes);
 
-  // step 5: export the app instance
-  module.exports = app;
-  ```
+// step 5: export the app instance
+module.exports = app;
+```
 
-- Create a file named `userRouter.js` in the `./routes/` directory and define all API end point specific to user in that `./routes/userRouter.js` file and at the end make them exposed to other files.
+#### Define the `POST /users/register` End Point
 
-  ```jsx
-  const express = require("express");
-  const userRouter = express.Router();
-  const userController = require("./controllers/userController.js");
+Create a file named `userRouter.js` in the `./routes/` directory and define all API end point specific to user in that `./routes/userRouter.js` file and at the end make them exposed to other files.
 
-  // define user specific API end point
-  userRouter.post("/register", userController.registerUser);
-  userRouter.get("/", userController.getAllUsers);
-  userRouter.get("/profile", userController.getUserProfile);
+```jsx
+const express = require("express");
+const userRouter = express.Router();
+const userController = require("./controllers/userController.js");
 
-  // export user router
-  module.exports = userRouter;
-  ```
+// define user specific API end point
+userRouter.post("/register", userController.registerUser); // <--- register user API end point
 
-- Create a fine named `userController.js` in the `./controllers/` directory.
-- Define all the user specific controllers in the `./controllers/userController.js` file and export them all at the end from this file.
+// export user router
+module.exports = userRouter;
+```
 
-### `registerUser` Controller Implementation
+#### Create Controllers for End point
+
+Create a fine named `userController.js` in the `./controllers/` directory.
+Define all the user specific controllers in the `./controllers/userController.js` file and export them all at the end from this file.
+
+##### `registerUser` Controller Implementation
 
 `registerUser` is a controller function whos purpose is to create a new user. The following is how this controller is implemented step by step:
-
-- Create a directory in the root and name it as `services` . Then create a file in the `./services` directory and name that file `userServices.js` .
-- Create a service named `createUser` in the `./services/userServices.js` file whose purpose is to create a new user in the MongoDB database only and return the new user.
-
-  ```jsx
-  const userModel = require("../models/userModel.js");
-
-  // @name: createUser
-  // @desc: create a new user in the MongoDB database
-  const createUser = async ({ firstName, lastName, email, password }) => {
-    if (!firstName || !lastName || !email || !password) {
-      throw new Error("All fields are required");
-    }
-
-    const user = await userModel.create({
-      fullName: { firstName, lastName },
-      email,
-      password,
-    });
-
-    return user;
-  };
-
-  module.exports = { createUser };
-  ```
 
 - Extract data (`fullName`, `email`, `password`) from the request body `req.body`
 - Perform an error validation to check to see -
@@ -387,60 +388,87 @@
 - If anything goes wrong or error happens in the process, then catch and handle the error and send response to the client with proper status code and message.
   Here is how the `./controllers/userController.js` file looks like at this point:
 
-  ```jsx
-  const { validationResult } = require("express-validator");
-  const userModel = require("../models/userModels.js");
-  const userServices = require("../services/userService.js");
+```jsx
+const { validationResult } = require("express-validator");
+const userModel = require("../models/userModels.js");
+const userServices = require("../services/userService.js");
 
-  // @name: registerUser
-  // @path: POST /user/register
-  // @desc: Create a new user
-  const registerUser = async (req, res, next) => {
-    try {
-      // step 1: extract data from the request body
-      const { fullName, email, password } = req.body;
+// @name: registerUser
+// @path: POST /user/register
+// @desc: Create a new user
+const registerUser = async (req, res, next) => {
+  try {
+    // step 1: extract data from the request body
+    const { fullName, email, password } = req.body;
 
-      // step 2: handle firstName, email and password validation errors
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
-
-      // step 3: check if user exists already with the same email
-      const isUserExists = await userModel.findOne({ email });
-      if (isuserExists) {
-        return res
-          .status(400)
-          .json({ message: "User already exists with the same email" });
-      }
-
-      // step 4: hash the password
-      const hashedPassword = await userModel.hashedPassword(password);
-
-      // step 5: create a new user
-      const user = await userServices.createUser({
-        firstName: fullName.firstName,
-        lastName: fullName.lastName,
-        email,
-        password: hashedPassword,
-      });
-
-      // step 6: generate token
-      const token = user.generateAuthToken();
-
-      // step 7: set the token in the cookies
-      res.cookie("token", token);
-
-      // step 8: send a success response to the client
-      res.status(201).json({ token, user });
-    } catch (error) {
-      res.status(500).json({ error, message: error.message });
+    // step 2: handle firstName, email and password validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
-  };
 
-  // export the user controllers
-  module.exports = { registerUser };
-  ```
+    // step 3: check if user exists already with the same email
+    const isUserExists = await userModel.findOne({ email });
+    if (isuserExists) {
+      return res
+        .status(400)
+        .json({ message: "User already exists with the same email" });
+    }
+
+    // step 4: hash the password
+    const hashedPassword = await userModel.hashedPassword(password);
+
+    // step 5: create a new user
+    const user = await userServices.createUser({
+      firstName: fullName.firstName,
+      lastName: fullName.lastName,
+      email,
+      password: hashedPassword,
+    });
+
+    // step 6: generate token
+    const token = user.generateAuthToken();
+
+    // step 7: set the token in the cookies
+    res.cookie("token", token);
+
+    // step 8: send a success response to the client
+    res.status(201).json({ token, user });
+  } catch (error) {
+    res.status(500).json({ error, message: error.message });
+  }
+};
+
+// export the user controllers
+module.exports = { registerUser };
+```
+
+#### Create Services for the End Poit
+
+- Create a directory in the root and name it as `services` . Then create a file in the `./services` directory and name that file `userServices.js` .
+- Create a service named `createUser` in the `./services/userServices.js` file whose purpose is to create a new user in the MongoDB database only and return the new user.
+
+```jsx
+const userModel = require("../models/userModel.js");
+
+// @name: createUser
+// @desc: create a new user in the MongoDB database
+const createUser = async ({ firstName, lastName, email, password }) => {
+  if (!firstName || !lastName || !email || !password) {
+    throw new Error("All fields are required");
+  }
+
+  const user = await userModel.create({
+    fullName: { firstName, lastName },
+    email,
+    password,
+  });
+
+  return user;
+};
+
+module.exports = { createUser };
+```
 
 ### `loginUser` Controller Implementation
 
@@ -986,16 +1014,16 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
     })
 
     // add methods
-    captainSchema.methods.generateToken = () => {
+    captainSchema.methods.generateToken = function() {
       const token = jwt.sign({_id: this._id}, process.env.JWT_SECRET, {expiresIn: '24h'});
       return token;
     }
 
-    captainSchema.methods.comparePassword = async (password) => {
+    captainSchema.methods.comparePassword = async function(password) {
       return await bcrypt.compare(password, this.password);
     }
 
-    captainSchema.statics.hashPassword = async (password) => {
+    captainSchema.statics.hashPassword = async function (password) {
       const hashedPassword = await bcrypt.hash(password, 10);
       return hashedPassword;
     }
@@ -1023,16 +1051,19 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
   // step 1: initialize the express app
   const app = express();
 
-  // step 2: application level middlewares configuration
+  /  // step 2: configure app level middleware
   app.use(cors());
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+  app.use(cookieParser());
 
-  // step 3: connect to the database
+  // step 3: connect to the DB
   connectToDb();
 
-  // step 4: define routes
-  app.use("/", serverRoutes);
-  app.use("/user", userRoutes);
-  app.use("/captain", captainRoutes); //  <--- captain routes configuration
+  // step: 4: API routes configuration
+  app.use("/", serverRoutes); // this will execute all the server specific routes
+  app.use("/users", userRoutes); //  <--- user routes configuration
+  app.use("/captains", captainRoutes); //  <--- captain routes configuration
 
   // step 5: export the app instance
   module.exports = app;
@@ -1073,7 +1104,7 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
         .isLength({ min: 3 })
         .withMessage("Plate must be at least 3 characters long"),
       body("vehicle.capacity")
-        .isIn({ min: 1 })
+        .isInt({ min: 1 })
         .withMessage("Capacity must be at least 1"),
       body("vehicle.vehicleType")
         .isIn(["car", "motorcycle", "auto"])
