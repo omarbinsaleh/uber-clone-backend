@@ -12,7 +12,7 @@
 - Install the following important packages
 
   ```bash
-  npm i express cors dotenv mongodb mongoose jsonwebtoken bcrypt express-validator
+  npm i express cors dotenv mongodb mongoose jsonwebtoken bcrypt express-validator cookie-parser
   ```
 
   Here is how the `package.json` file look like after these basic changes
@@ -66,6 +66,7 @@
   require("dotenv").config();
   const express = require("express");
   const cors = rquire("cors");
+  const cookieParser = require("cookie-parser");
   const connectToDb = require("./bd/db.js");
   const serverRoutes = require("./routes/serverRoutes.js");
   const userRoutes = require("./routes/userRoutes.js");
@@ -76,6 +77,9 @@
 
   // step 2: configure app level middleware
   app.use(cors());
+  app.use(express.json())
+  app.use(express.urlencoded({extended: true}));
+  app.use(cookieParser());
 
   // step 3: connect to the DB
   connectToDb();
