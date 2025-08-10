@@ -16,13 +16,13 @@ const registerCaptain = async (req, res, next) => {
       // step 2: perfor error validation for all the field comming through the request body
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-         return res.status(400).json({ errors: errors.array() });
+         return res.status(400).json({ success: false, message: 'Invalid inputs', errors: errors.array() });
       }
 
       // step 3: check if the is any captain in the database with the same email
       const isCaptainExist = await captainModel.findOne({ email });
       if (isCaptainExist) {
-         return res.status(400).json({ message: "Captain already exists with this email" });
+         return res.status(400).json({ success: false, message: "Captain already exists with this email" });
       }
 
       // step 4: hash the password
@@ -47,10 +47,10 @@ const registerCaptain = async (req, res, next) => {
       res.cookie('token', token);
 
       // step 8: send response to the front end
-      res.status(201).json({ captain, token });
+      res.status(201).json({ captain, token, success: true, message: 'Captain registered successfully' });
 
    } catch (error) {
-      res.status(402).json({ error, message: error.message });
+      res.status(402).json({ error, success: false, message: error.message });
    };
 };
 
@@ -66,19 +66,19 @@ const loginCaptain = async (req, res, next) => {
       // step 2: perform error validation for the data comming through the request body
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
-         return res.status(400).json({ errors: errors.array() });
+         return res.status(400).json({ success: false, message: 'Invalid Email or Password', errors: errors.array() });
       };
 
       // step 3: validate captain using email
       const captain = await captainModel.findOne({ email }).select('+password');
       if (!captain) {
-         return res.status(400).status({ message: 'Invalid Email or Password' });
+         return res.status(400).status({ success: false, message: 'Invalid Email or Password' });
       };
 
       // step 4: validate captain's password
       const isMatch = await captain.comparePassword(password);
       if (!isMatch) {
-         return res.status(400).json({ message: 'Invalid Email or Password' });
+         return res.status(400).json({ success: false, message: 'Invalid Email or Password' });
       };
 
       // step 5: generate authentication token
@@ -88,9 +88,9 @@ const loginCaptain = async (req, res, next) => {
       res.cookie('token', token);
 
       // step 7: send success response to the frontend with captain information and the token
-      res.status(200).json({ captain, token });
+      res.status(200).json({ captain, token, success: true, message: 'Captain Login Successful' });
    } catch (error) {
-      res.status(400).json({ message: error.message, error });
+      res.status(400).json({ success: false, error, message: error.message, error });
    };
 };
 
@@ -100,7 +100,7 @@ const loginCaptain = async (req, res, next) => {
 // @desc: Return a captain's profile information
 // @auth: Omar Bin Saleh
 const getCaptainProfile = async (req, res, next) => {
-   res.status(200).json({captain: req.captain, message: 'Captain profile is returned successfully'});
+   res.status(200).json({captain: req.captain, success: true, message: 'Captain profile is returned successfully'});
 };
 
 // @name: logoutCaptain
@@ -118,9 +118,9 @@ const logoutCaptain = async (req, res, next) => {
       res.clearCookie('token');
 
       // step 3: send a success response to the frontend
-      res.status(200).json({blackListedToken, message: 'User logged out successfully'});
+      res.status(200).json({blackListedToken, success: true, message: 'User logged out successfully'});
    } catch (error) {
-      res.status(400).json({message: error.message, error});
+      res.status(400).json({ success: false, message: error.message, error});
    }
 }
 
