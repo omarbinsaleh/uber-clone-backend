@@ -662,35 +662,35 @@ If not created yet, Create a Model for the Black List Token in the `./models/bla
 - Create a file named `blacklistTokenModel.js` in the `./mdodels` directory. In the `./models/blacklistTokenModel.js` file, create the schema for a blacklist token in such way that the blacklist token should automatically be deleted from the database after 24 hours from their creation.
 - Using the `blacklistTokenSchema`, create a model and export it.
 
-  Here is how the `./models/blacklistTokenModel.js` file looks like at this point
+Here is how the `./models/blacklistTokenModel.js` file looks like at this point
 
-  ```jsx
-  // import dependencies
-  const mongoose = require("mongoose");
+```jsx
+// import dependencies
+const mongoose = require("mongoose");
 
-  // define schema for blacklist token
-  const blacklistTokenSchema = new mongoose.Schema({
-    token: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    createAt: {
-      type: Date,
-      default: Date.now,
-      expires: 86400, // 24 hours in seconds
-    },
-  });
+// define schema for blacklist token
+const blacklistTokenSchema = new mongoose.Schema({
+  token: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  createAt: {
+    type: Date,
+    default: Date.now,
+    expires: 86400, // 24 hours in seconds
+  },
+});
 
-  // create model for blacklist token
-  const blacklistTokenModel = mongoose.model(
-    "BlacklistTokens",
-    blacklistTokenSchema
-  );
+// create model for blacklist token
+const blacklistTokenModel = mongoose.model(
+  "BlacklistTokens",
+  blacklistTokenSchema
+);
 
-  // exports the blacklistTokenModel
-  module.exports = blacklistTokenModel;
-  ```
+// exports the blacklistTokenModel
+module.exports = blacklistTokenModel;
+```
 
 #### Configure Routes for the User API
 
