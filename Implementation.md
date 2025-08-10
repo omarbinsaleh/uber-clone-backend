@@ -155,11 +155,7 @@
 
 ## Server Specific API Endpoint Implementation
 
-```
-
 ### **1. `GET http://loalhost:400/` end point**
-
-```
 
 #### Configure Server Routes
 
