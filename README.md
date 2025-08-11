@@ -329,7 +329,6 @@ Get a loggedin user's profile information.
 
 ---
 
-
 ### **4. Loutout user**
 
 **Endpoint**
@@ -396,11 +395,273 @@ Allow an user to logout of the system.
 
 **Notes**
 
-- On success, the ` blacklistToken ` gets sent to the client
+- On success, the `blacklistToken` gets sent to the client
 - The token can be used for authentication in protected routes.
 
 ---
 
+### **5. Register a New Captain**
+
+**Endpoint**
+
+```
+POST /captains/register
+```
+
+**Description**  
+Registers a new captain in the system and returns an authentication token.
+
+---
+
+**Request Headers**
+| Key | Value | Required | Description |
+|---------------|-------------------|----------|------------------------------|
+| Content-Type | application/json | Yes | Request body format |
+
+---
+
+**Request Body**
+
+```json
+{
+  "fullName": {
+    "firstName": "John",
+    "lastName": "Doe"
+  },
+  "email": "john@example.com",
+  "password": "Pass@1234",
+  "vehicle": {
+    "color": "red",
+    "plate": 1234,
+    "capacity": 3,
+    "vehicleType": "auto"
+  }
+}
+```
+
+| Field                 | Type   | Required | Description                  |
+| --------------------- | ------ | -------- | ---------------------------- |
+| `fullName.firstName`  | string | Yes      | User's first name            |
+| `fullName.lastName`   | string | Yes      | User's last name             |
+| `email`               | string | Yes      | Valid email address          |
+| `password`            | string | Yes      | Minimum 6 characters, secure |
+| `vehicle.color`       | string | Yes      | Minimum 3 characters, secure |
+| `vehicle.plate`       | string | Yes      | Minimum 3 characters, secure |
+| `vehicle.capacity`    | string | Yes      | Minimum 3 characters, secure |
+| `vehicle.vehicleType` | string | Yes      | Minimum 3 characters, secure |
+
+---
+
+**Validation Rules**
+
+- `firstName` and `lastName` must not be empty.
+- `email` must be in valid email format.
+- `password` must meet security requirements.
+- `vehcile.color` must be at least 3 characters
+- `vehcile.plate` must be at least 3 characters
+- `vehicle.capacity` must be at least 1
+- `vehicle.vehicleType` must be at least 3 characters long
+
+---
+
+**Success Response**
+
+```json
+{
+  "success": true,
+  "message": "Captain registered successfully",
+  "token": "jwt_token_here",
+  "captain": {
+    "_id": "64cd1e1d5e0f0b1eac345f9a",
+    "fullName": {
+      "firstName": "John",
+      "lastName": "Doe",
+    },
+    "email": "john@example.com",
+    "password": "test_captain_password",
+    "vehicle": {
+      "color": "red",
+      "capacity": 4,
+      "plate": 2342,
+      "vehicleType": "car"
+    },
+    "status": "inactive",
+    "location" {
+      "lat": "",
+      "lng": ""
+    },
+  }
+}
+```
+
+**Status:** `201 Created`
+
+---
+
+**Error Responses**
+**Email Already Exists (400)**
+
+```json
+{
+  "success": false,
+  "message": "Captain already exists with this email"
+}
+```
+
+**Validation Errors (400)**
+
+```json
+{
+  "success": false,
+  "errors": [
+    { "msg": "Invalid email format", "param": "email", "location": "body" }
+  ]
+}
+```
+
+**Server Error (500)**
+
+```json
+{
+  "success": false,
+  "message": "Internal Server Error"
+}
+```
+
+---
+
+**Notes**
+
+- On success, a JWT token is set in the `token` cookie.
+- Passwords are hashed using bcrypt before saving.
+- The token can be used for authentication in protected routes.
+
+---
+
+### **2. Captain Login**
+
+**Endpoint**
+
+```
+POST /captains/login
+```
+
+**Description**  
+Login an existing captain in the system.
+
+---
+
+**Request Headers**
+| Key | Value | Required | Description |
+|---------------|-------------------|----------|------------------------------|
+| Content-Type | application/json | Yes | Request body format |
+
+---
+
+**Request Body**
+
+```json
+{
+  "email": "john@example.com",
+  "password": "Pass@1234"
+}
+```
+
+| Field      | Type   | Required | Description                  |
+| ---------- | ------ | -------- | ---------------------------- |
+| `email`    | string | Yes      | Valid email address          |
+| `password` | string | Yes      | Minimum 8 characters, secure |
+
+---
+
+**Validation Rules**
+
+- `email` must be in valid email format.
+- `password` must meet security requirements.
+
+---
+
+**Success Response**
+
+```json
+{
+  "success": true,
+  "message": "Captain Login Successfully",
+  "token": "jwt_token_here",
+  "captain": {
+    "_id": "64cd1e1d5e0f0b1eac345f9a",
+    "fullName": {
+      "firstName": "John",
+      "lastName": "Doe",
+    },
+    "email": "john@example.com",
+    "vehicle": {
+      "color": "red",
+      "capacity": 4,
+      "plate": 2342,
+      "vehicleType": "car"
+    },
+    "status": "inactive",
+    "location" {
+      "lat": "",
+      "lng": ""
+    },
+  }
+}
+```
+
+**Status:** `201 Created`
+
+---
+
+**Error Responses**
+**Validate Token (400)**
+
+```json
+{
+  "success": false,
+  "message": "Unauthorized access"
+}
+```
+
+**Email Already Exists (400)**
+
+```json
+{
+  "success": false,
+  "message": "Unauthorized access"
+}
+```
+
+**Validation Errors (400)**
+
+```json
+{
+  "success": false,
+  "errors": [
+    { "msg": "Invalid email format", "param": "email", "location": "body" }
+  ]
+}
+```
+
+**Server Error (500)**
+
+```json
+{
+  "success": false,
+  "message": "Internal Server Error"
+}
+```
+
+---
+
+**Notes**
+
+- On success, a JWT token is set in the `token` cookie.
+- Passwords are hashed using bcrypt before saving.
+- The token can be used for authentication in protected routes.
+
+---
 
 ## Development Setup
 
