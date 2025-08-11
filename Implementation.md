@@ -727,7 +727,7 @@ module.exports = app;
 
 #### Define the `GET /users/profile ` API End Point
 
-If not done yet, Create a file named `userRoutes.js` in the `./routes/` directory and define the the API end point `GET /users/profile` the `./routes/userRoutes.js ` file. Here is the current state of the `./routes/userRoutes.js` file
+If not done yet, Create a file named `userRoutes.js` in the `./routes/` directory and define the the API end point `GET /users/profile` in the `./routes/userRoutes.js ` file. Here is the current state of the `./routes/userRoutes.js` file
 
 ```jsx
 const express = require("express");

@@ -302,23 +302,12 @@ Get a loggedin user's profile information.
 }
 ```
 
-**If the token is black listed already (401)**
+**If the token is a Balacklist token (401)**
 
 ```json
 {
   "success": false,
   "message": "Unauthorized access"
-}
-```
-
-**Validation Errors (401)**
-
-```json
-{
-  "success": false,
-  "errors": [
-    { "msg": "Invalid email format", "param": "email", "location": "body" }
-  ]
 }
 ```
 
@@ -335,10 +324,83 @@ Get a loggedin user's profile information.
 
 **Notes**
 
-- On success, a JWT token is set in the `token` cookie.
+- On success, user information is provided to the client
 - The token can be used for authentication in protected routes.
 
 ---
+
+
+### **4. Loutout user**
+
+**Endpoint**
+
+```
+GET /user/logout
+```
+
+**Description**  
+Allow an user to logout of the system.
+
+---
+
+**Validation Rules**
+
+- an authentication token must be sent through the `Headers.Authorization` or by `http-cookies`
+- `token` must be in valid token format.
+
+---
+
+**Success Response**
+
+```json
+{
+  "success": true,
+  "message": "User logout successful",
+  "blacklistToken": "blacklist_token_here"
+}
+```
+
+**Status:** `201 Created`
+
+---
+
+**Error Responses**
+**Validate token (401)**
+
+```json
+{
+  "success": false,
+  "message": "Unauthorized access"
+}
+```
+
+**If the token is a Balacklist token (401)**
+
+```json
+{
+  "success": false,
+  "message": "Unauthorized access"
+}
+```
+
+**Server Error (500)**
+
+```json
+{
+  "success": false,
+  "message": "Internal Server Error"
+}
+```
+
+---
+
+**Notes**
+
+- On success, the ` blacklistToken ` gets sent to the client
+- The token can be used for authentication in protected routes.
+
+---
+
 
 ## Development Setup
 
