@@ -21,7 +21,7 @@ const registerUser = async (req, res, next) => {
       // step 3: check if user exists with the same email
       const isUserExists = await userModel.findOne({ email });
       if (isUserExists) {
-         return res.status(400).json({success: false, message: 'User already exists with this email' });
+         return res.status(400).json({ success: false, message: 'User already exists with this email' });
       }
 
       // step 4: hash the password
@@ -42,7 +42,17 @@ const registerUser = async (req, res, next) => {
       res.cookie('token', token);
 
       // step 8: send a success response to the client
-      res.status(201).json({ token, user, success: true, message: 'User registered successfully!' });
+      res.status(201).json({
+         token,
+         user: {
+            _id: user._id,
+            fullName: user.fullName,
+            email: user.email,
+            __v: user.__v
+         },
+         success: true,
+         message: 'User registered successfully!'
+      });
    } catch (error) {
       res.status(500).json({ error, success: false, message: error.message });
    }
@@ -55,10 +65,10 @@ const registerUser = async (req, res, next) => {
 const getAllUsers = async (req, res, next) => {
    try {
       const users = []
-      res.send({users, success: true, message: 'all users has been returned successfully' })
+      res.send({ users, success: true, message: 'all users has been returned successfully' })
       next()
    } catch (error) {
-      res.status(500).json({success: false, error, message: error.message })
+      res.status(500).json({ success: false, error, message: error.message })
    }
 }
 
@@ -74,7 +84,7 @@ const loginUser = async (req, res, next) => {
       // step 2: email and password error validation
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-         return res.status(400).json({success: false, message: 'Invalid email or password', errors: errors.array() });
+         return res.status(400).json({ success: false, message: 'Invalid email or password', errors: errors.array() });
       }
 
       // step 3: find user in the database with the email
@@ -82,7 +92,7 @@ const loginUser = async (req, res, next) => {
 
       // step 4: check if the user already exists or not
       if (!user) {
-         return res.status(401).json({success: false, message: 'Invalid email or password' });
+         return res.status(401).json({ success: false, message: 'Invalid email or password' });
       };
 
       // step 5: check if the password is matching
@@ -98,7 +108,17 @@ const loginUser = async (req, res, next) => {
       res.cookie('token', token);
 
       // step 8: send the user and the token to the font end
-      res.status(200).json({ user: {_id: user._id, fullName: user.fullName, email: user.email, __v: user.__v}, token, success: true, message: 'User loggedin successfully' });
+      res.status(200).json({
+         user: {
+            _id: user._id,
+            fullName: user.fullName,
+            email: user.email,
+            __v: user.__v
+         },
+         token,
+         success: true,
+         message: 'User loggedin successfully'
+      });
    } catch (error) {
       res.status(500).json({ success: false, message: error.message, error });
    }
@@ -122,13 +142,13 @@ const logoutUser = async (req, res, next) => {
    try {
       // step 1: save the token in the database as black listed token
       const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
-      const blacklistToken = await blacklistTokenModel({ token });
+      const blacklistToken = await blacklistTokenModel.create({ token });
 
       // step 2: clear the token from the cookies
       res.clearCookie('token')
 
       // step 3: send a response to the front end with the black listed token
-      res.status(200).json({ success: true, message: 'User logged out successfully', blacklistToken });
+      res.status(200).json({ success: true, message: 'User logged out successfully', blacklistToken: blacklistToken.token });
    } catch (error) {
       res.status(401).json({ success: false, message: 'Unauthorized access or Something went wrong' })
    }

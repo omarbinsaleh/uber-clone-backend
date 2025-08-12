@@ -47,7 +47,19 @@ const registerCaptain = async (req, res, next) => {
       res.cookie('token', token);
 
       // step 8: send response to the front end
-      res.status(201).json({ captain, token, success: true, message: 'Captain registered successfully' });
+      res.status(201).json({ 
+         captain: {
+            _id: captain._id,
+            fullName: captain.fullName, 
+            email: captain.email, 
+            status: captain.status, 
+            vehicle: captain.vehicle,
+            __v: vehicle.__v
+         }, 
+         token, 
+         success: true, 
+         message: 'Captain registered successfully' 
+      });
 
    } catch (error) {
       res.status(402).json({ error, success: false, message: error.message });
@@ -130,7 +142,7 @@ const logoutCaptain = async (req, res, next) => {
       res.clearCookie('token');
 
       // step 3: send a success response to the frontend
-      res.status(200).json({ blackListedToken, success: true, message: 'User logged out successfully' });
+      res.status(200).json({ blackListedToken: blackListedToken.token, success: true, message: 'User logged out successfully' });
    } catch (error) {
       res.status(400).json({ success: false, message: error.message, error });
    }

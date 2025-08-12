@@ -72,7 +72,7 @@ Registers a new user in the system and returns an authentication token.
 | `fullName.firstName` | string | Yes      | User's first name            |
 | `fullName.lastName`  | string | Yes      | User's last name             |
 | `email`              | string | Yes      | Valid email address          |
-| `password`           | string | Yes      | Minimum 8 characters, secure |
+| `password`           | string | Yes      | Minimum 6 characters, secure |
 
 ---
 
@@ -80,7 +80,7 @@ Registers a new user in the system and returns an authentication token.
 
 - `firstName` and `lastName` must not be empty.
 - `email` must be in valid email format.
-- `password` must meet security requirements.
+- `password` must meet security requirements and must be at least 6 characters long.
 
 ---
 
@@ -93,9 +93,12 @@ Registers a new user in the system and returns an authentication token.
   "token": "jwt_token_here",
   "user": {
     "_id": "64cd1e1d5e0f0b1eac345f9a",
-    "firstName": "John",
-    "lastName": "Doe",
-    "email": "john@example.com"
+    "fullName": {
+      "firstName": "John",
+      "lastName": "Doe"
+    },
+    "email": "john@example.com",
+    "__v": 0
   }
 }
 ```
@@ -158,9 +161,10 @@ Login an existing user in the system and generate an authentication token and fi
 ---
 
 **Request Headers**
-| Key | Value | Required | Description |
+| Key           | Value             | Required | Description                  |
 |---------------|-------------------|----------|------------------------------|
-| Content-Type | application/json | Yes | Request body format |
+| Content-Type  | application/json  | Yes      | Request body format          |
+| Authorization | Bearer <token>    | Yes      | Authentication token         |
 
 ---
 
@@ -206,7 +210,7 @@ Login an existing user in the system and generate an authentication token and fi
 }
 ```
 
-**Status:** `201 Created`
+**Status:** `200 Ok`
 
 ---
 
@@ -262,9 +266,16 @@ Get a loggedin user's profile information.
 
 ---
 
+**Request Headers**
+| Key           | Value             | Required | Description                  |
+|---------------|-------------------|----------|------------------------------|
+| Authorization | Bearer <token>    | Yes      | Authentication token         |
+
+---
+
 **Validation Rules**
 
-- an authentication token must be sent through the `Headers.Authorization` or by `http-cookies`
+- an authentication token must be sent through either the `Headers.Authorization` or by `http-cookies`
 - `token` must be in valid token format.
 
 ---
@@ -288,7 +299,7 @@ Get a loggedin user's profile information.
 }
 ```
 
-**Status:** `201 Created`
+**Status:** `200 Ok`
 
 ---
 
@@ -342,6 +353,13 @@ Allow an user to logout of the system.
 
 ---
 
+**Request Headers**
+| Key           | Value             | Required | Description                  |
+|---------------|-------------------|----------|------------------------------|
+| Authorization | Bearer <token>    | Yes      | Authentication token         |
+
+---
+
 **Validation Rules**
 
 - an authentication token must be sent through the `Headers.Authorization` or by `http-cookies`
@@ -359,7 +377,7 @@ Allow an user to logout of the system.
 }
 ```
 
-**Status:** `201 Created`
+**Status:** `200 Ok`
 
 ---
 
@@ -414,9 +432,9 @@ Registers a new captain in the system and returns an authentication token.
 ---
 
 **Request Headers**
-| Key | Value | Required | Description |
+| Key           | Value             | Required | Description                  |
 |---------------|-------------------|----------|------------------------------|
-| Content-Type | application/json | Yes | Request body format |
+| Content-Type  | application/json  | Yes       | Request body format         |
 
 ---
 
@@ -454,7 +472,7 @@ Registers a new captain in the system and returns an authentication token.
 
 **Validation Rules**
 
-- `firstName` and `lastName` must not be empty.
+- `firstName` and `lastName` must not be empty and must not be any less than 3 characters.
 - `email` must be in valid email format.
 - `password` must meet security requirements.
 - `vehcile.color` must be at least 3 characters
@@ -478,7 +496,6 @@ Registers a new captain in the system and returns an authentication token.
       "lastName": "Doe",
     },
     "email": "john@example.com",
-    "password": "test_captain_password",
     "vehicle": {
       "color": "red",
       "capacity": 4,
@@ -532,13 +549,13 @@ Registers a new captain in the system and returns an authentication token.
 
 **Notes**
 
-- On success, a JWT token is set in the `token` cookie.
+- On success, a JWT `token` is set in the http-cookies.
 - Passwords are hashed using bcrypt before saving.
 - The token can be used for authentication in protected routes.
 
 ---
 
-### **2. Captain Login**
+### **6. Captain Login**
 
 **Endpoint**
 
@@ -552,9 +569,10 @@ Login an existing captain in the system.
 ---
 
 **Request Headers**
-| Key | Value | Required | Description |
+| Key           | Value             | Required | Description                  |
 |---------------|-------------------|----------|------------------------------|
-| Content-Type | application/json | Yes | Request body format |
+| Content-Type  | application/json  | Yes      | Request body format          |
+| Authorization | Bearer <token>    | Yes      | Authentication token         |
 
 ---
 
@@ -570,14 +588,14 @@ Login an existing captain in the system.
 | Field      | Type   | Required | Description                  |
 | ---------- | ------ | -------- | ---------------------------- |
 | `email`    | string | Yes      | Valid email address          |
-| `password` | string | Yes      | Minimum 8 characters, secure |
+| `password` | string | Yes      | Minimum 6 characters, secure |
 
 ---
 
 **Validation Rules**
 
 - `email` must be in valid email format.
-- `password` must meet security requirements.
+- `password` must meet security requirements and must be at least 6 characters long.
 
 ---
 
@@ -610,7 +628,7 @@ Login an existing captain in the system.
 }
 ```
 
-**Status:** `201 Created`
+**Status:** `200 Ok`
 
 ---
 
@@ -657,11 +675,186 @@ Login an existing captain in the system.
 
 **Notes**
 
-- On success, a JWT token is set in the `token` cookie.
+- On success, a JWT `token` is set in the http-cookies.
 - Passwords are hashed using bcrypt before saving.
 - The token can be used for authentication in protected routes.
 
 ---
+
+### **7 Get Captain's Profile Information**
+
+**Endpoint**
+
+```
+GET /captains/profile
+```
+
+**Description**  
+Get a loggedin captains's profile information.
+
+---
+
+**Request Headers**
+| Key           | Value             | Required | Description                  |
+|---------------|-------------------|----------|------------------------------|
+| Authorization | Bearer <token>    | Yes      | Authentication token         |
+
+---
+
+**Validation Rules**
+
+- an authentication token must be sent through either the `Headers.Authorization` or by `http-cookies`
+- `token` must be in valid token format.
+
+---
+
+**Success Response**
+
+```json
+{
+  "success": true,
+  "message": "User profile is returned successfully!",
+  "captain": {
+    "_id": "64cd1e1d5e0f0b1eac345f9a",
+    "fullName": {
+      "firstName": "John",
+      "lastName": "Doe",
+    },
+    "email": "john@example.com",
+    "vehicle": {
+      "color": "red",
+      "capacity": 4,
+      "plate": 2342,
+      "vehicleType": "car"
+    },
+    "status": "inactive",
+    "location" {
+      "lat": "",
+      "lng": ""
+    },
+  }
+}
+```
+
+**Status:** `200 Ok`
+
+---
+
+**Error Responses**
+**Validate token (401)**
+
+```json
+{
+  "success": false,
+  "message": "Unauthorized access"
+}
+```
+
+**If the token is a Balacklist token (401)**
+
+```json
+{
+  "success": false,
+  "message": "Unauthorized access"
+}
+```
+
+**Server Error (500)**
+
+```json
+{
+  "success": false,
+  "message": "Internal Server Error"
+}
+```
+
+---
+
+**Notes**
+
+- On success, user information is provided to the client
+- The token can be used for authentication in protected routes.
+
+---
+
+### **8. Loutout Captain**
+
+**Endpoint**
+
+```
+GET /captains/logout
+```
+
+**Description**  
+Allow a captain to logout of the system.
+
+---
+
+**Request Headers**
+| Key           | Value             | Required | Description                  |
+|---------------|-------------------|----------|------------------------------|
+| Authorization | Bearer <token>    | Yes      | Authentication token         |
+
+---
+
+**Validation Rules**
+
+- an authentication token must be sent through the `Headers.Authorization` or by `http-cookies`
+- `token` must be in valid token format.
+
+---
+
+**Success Response**
+
+```json
+{
+  "success": true,
+  "message": "Captain logout successful",
+  "blacklistToken": "blacklist_token_here"
+}
+```
+
+**Status:** `200 Ok`
+
+---
+
+**Error Responses**
+**Validate token (401)**
+
+```json
+{
+  "success": false,
+  "message": "Unauthorized access"
+}
+```
+
+**If the token is a Balacklist token (401)**
+
+```json
+{
+  "success": false,
+  "message": "Unauthorized access"
+}
+```
+
+**Server Error (500)**
+
+```json
+{
+  "success": false,
+  "message": "Internal Server Error"
+}
+```
+
+---
+
+**Notes**
+
+- On success, the `blacklistToken` gets sent to the client
+- The token can be used for authentication in protected routes.
+
+---
+
 
 ## Development Setup
 

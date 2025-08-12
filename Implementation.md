@@ -430,7 +430,17 @@ const registerUser = async (req, res, next) => {
     res.cookie("token", token);
 
     // step 8: send a success response to the client
-    res.status(201).json({ success: true, message: 'Registered User Successfully', token, user });
+    res.status(201).json({
+      token,
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        __v: user.__v
+      },
+      success: true,
+      message: 'User registered successfully!'
+     });
   } catch (error) {
     res.status(500).json({ success false, error, message: error.message });
   }
@@ -509,7 +519,7 @@ If not done yet, Create a file named `userRoutes.js` in the `./routes/` director
 ```jsx
 const express = require("express");
 const userRouter = express.Router();
-const userControllers = require("./controllers/userController.js");
+const userControllers = require("../controllers/userController.js");
 
 // define user specific API end point
 userRouter.post("/register", userControllers.registerUser); // <--- register user API end point
@@ -583,10 +593,15 @@ const registerUser = async (req, res, next) => {
 
     // step 7: send a success response to the client
     res.status(201).json({
-      success: false,
-      message: "Registered user successfully",
       token,
-      user,
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        __v: user.__v,
+      },
+      success: true,
+      message: "User registered successfully!",
     });
   } catch (error) {
     res.status(500).json({ success: false, error, message: error.message });
@@ -597,50 +612,59 @@ const registerUser = async (req, res, next) => {
 // @path: POST /user/login
 // @desc: login user into the system
 const loginUser = async (req, res, next) => {
-  // step 1: extract data from the request body
-  const { email, password } = req.body;
+  try {
+    // step 1: extract data from the request body
+    const { email, password } = req.body;
 
-  // step 2: email and password error validation
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid email or password",
-      errors: errors.array(),
+    // step 2: email and password error validation
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email or password",
+        errors: errors.array(),
+      });
+    }
+
+    // step 3: find user in the database with the email
+    const user = await userModel.findOne({ email }).select("+password");
+
+    // step 4: check if the user already exists or not
+    if (!user) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid email or password" });
+    }
+
+    // step 5: check if the password is matching
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid email or password" });
+    }
+
+    // step 6: generate the authentication token
+    const token = user.generateAuthToken();
+
+    // step 7: set the token in the cookies
+    res.cookie("token", token);
+
+    // step 8: send the user and the token to the font end
+    res.status(200).json({
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        __v: user.__v,
+      },
+      token,
+      success: true,
+      message: "User loggedin successfully",
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message, error });
   }
-
-  // step 3: find user in the database with the email
-  const user = await userModel.findOne({ email }).select("+password");
-
-  // step 4: check if the user already exists
-  if (!user) {
-    res
-      .status(401)
-      .json({ success: false, message: "Invalid email or password" });
-  }
-
-  // step 5: check if the password is matching
-  const isMatch = await user.comparePassword(password);
-  if (!isMatch) {
-    res
-      .status(401)
-      .json({ success: false, message: "Invalid email or password" });
-  }
-
-  // step 6: generate the authentication token
-  const token = await user.generateToken();
-
-  // step 7: set the token in the cookies
-  res.cookie("token", token);
-
-  // step 8: send the user and the token to the font end
-  res.status(200).json({
-    user,
-    token,
-    success: false,
-    message: "User loggedin successfully",
-  });
 };
 
 // export the user controllers
@@ -732,12 +756,17 @@ If not done yet, Create a file named `userRoutes.js` in the `./routes/` director
 ```jsx
 const express = require("express");
 const userRouter = express.Router();
-const userControllers = require("./controllers/userController.js");
+const userControllers = require("../controllers/userController.js");
+const authMiddleware = require("../middleware/authMiddleware.js");
 
 // define user specific API end point
 userRouter.post("/register", userControllers.registerUser); // <--- register user API end point
 userRotues.post("/login", userControllers.loginUser); //  <--- Login an existing user
-userRoutes.get("/profile", userControllers.getUserProfile); // <--- Get loggedin user's profile information
+userRoutes.get(
+  "/profile",
+  authMiddleware.authUser,
+  userControllers.getUserProfile
+); // <--- Get loggedin user's profile information
 
 // export user router
 module.exports = userRouter;
@@ -772,30 +801,38 @@ const authUser = async (req, res, next) => {
   // step 1: check if the token is found or not
   const token = req.cookies?.token || req.headers?.authorization?.split(" ")[1];
   if (!token) {
-    return res.status(401).json({ message: "Unauthorized access" });
-  }
-
-  // step 2: check if the token is black listed
-  const isBlackListed = await blacklistTokenModel.findOne({ token });
-  if (isBlackListed) {
-    return res.status(401).json({ message: "Unauthorized access" });
+    return res
+      .status(401)
+      .json({ success: false, message: "Unauthorized access" });
   }
 
   try {
+    // step 2: check if the token is black listed
+    const isBlackListed = await blacklistTokenModel.findOne({ token });
+    if (isBlackListed) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized access" });
+    }
+
     // step 3: decode the token
     const decodedObj = jwt.verify(token, process.env.JWT_SECRET);
 
     // step 4: check if the user is found or not
     const user = await userModel.findOne({ _id: decodedObj._id });
     if (!user) {
-      return res.status(401).json({ message: "Unauthorized access" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized access" });
     }
 
     // step 5: add the user information in the request object
     req.user = user;
     return next();
   } catch (error) {
-    return res.status(401).json({ message: "Unauthorized access" });
+    return res
+      .status(401)
+      .json({ success: false, message: "Unauthorized access" });
   }
 };
 
@@ -856,10 +893,15 @@ const registerUser = async (req, res, next) => {
 
     // step 6: send a success response to the client
     res.status(201).json({
-      success: true,
-      message: "Registered user successfully",
       token,
-      user,
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        __v: user.__v,
+      },
+      success: true,
+      message: "User registered successfully!",
     });
   } catch (error) {
     res.status(500).json({ success: false, error, message: error.message });
@@ -884,47 +926,59 @@ const findUsers = async (req, res, next) => {
 // @desc: allow an existing user to login
 // @auth: Omar Bin Saleh
 const loginUser = async (req, res, next) => {
-  // step 1: extract data from the request body
-  const { email, password } = req.body;
+  try {
+    // step 1: extract data from the request body
+    const { email, password } = req.body;
 
-  // step 2: email and password error validation
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid Email or Password",
-      errors: errors.array(),
+    // step 2: email and password error validation
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email or password",
+        errors: errors.array(),
+      });
+    }
+
+    // step 3: find user in the database with the email
+    const user = await userModel.findOne({ email }).select("+password");
+
+    // step 4: check if the user already exists or not
+    if (!user) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid email or password" });
+    }
+
+    // step 5: check if the password is matching
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid email or password" });
+    }
+
+    // step 6: generate the authentication token
+    const token = user.generateAuthToken();
+
+    // step 7: set the token in the cookies
+    res.cookie("token", token);
+
+    // step 8: send the user and the token to the font end
+    res.status(200).json({
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        __v: user.__v,
+      },
+      token,
+      success: true,
+      message: "User loggedin successfully",
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message, error });
   }
-
-  // step 3: find user in the database with the email
-  const user = await userModel.findOne({ email }).select("+password");
-
-  // step 4: check if the user already exists or not
-  if (!user) {
-    return res
-      .status(401)
-      .json({ success: false, message: "Invalid email or password" });
-  }
-
-  // step 5: check if the password is matching
-  const isMatch = await user.comparePassword(password);
-  if (!isMatch) {
-    return res
-      .status(401)
-      .json({ success: false, message: "Invalid email or password" });
-  }
-
-  // step 6: generate the authentication token
-  const token = await user.generateToken();
-
-  // step 7: send the user and the token to the font end
-  res.status(200).json({
-    success: true,
-    user,
-    token,
-    message: "User loggedin successfully",
-  });
 };
 
 // @name: getUserProfile
@@ -944,7 +998,400 @@ const getUserProfile = async (req, res, next) => {
 module.exports = { registerUser, findUsers, loginUser, getUserProfile };
 ```
 
-### `authUser` Middleware Implementation
+### \*\*04. `GET /users/logout` - Logout an User
+
+#### Create Model for the API End Point
+
+If not created yet, Create a Model for the user in the `./models/userModels.js`
+
+If not created yet, Create a Model for the Black List Token in the `./models/blacklistTokenModel.js`
+
+##### `blacklistTokenModel` Model Implementation
+
+`blacklistTokenModel` is a model to store all the black listed token in the databas. When a user logout, the logout API will take the token, which the user got after successfull login or registeration as a new user, and mark to the token in the database as a black listed token. The following are the step by step implementation of the model
+
+- Create a file named `blacklistTokenModel.js` in the `./mdodels` directory. In the `./models/blacklistTokenModel.js` file, create the schema for a blacklist token in such way that the blacklist token should automatically be deleted from the database after 24 hours from their creation.
+- Using the `blacklistTokenSchema`, create a model and export it.
+
+Here is how the `./models/blacklistTokenModel.js` file looks like at this point
+
+```jsx
+// import dependencies
+const mongoose = require("mongoose");
+
+// define schema for blacklist token
+const blacklistTokenSchema = new mongoose.Schema({
+  token: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  createAt: {
+    type: Date,
+    default: Date.now,
+    expires: 86400, // 24 hours in seconds
+  },
+});
+
+// create model for blacklist token
+const blacklistTokenModel = mongoose.model(
+  "BlacklistTokens",
+  blacklistTokenSchema
+);
+
+// exports the blacklistTokenModel
+module.exports = blacklistTokenModel;
+```
+
+#### Configure Routes for the User API
+
+If not done yet, configure routes for the user API end points in the `./app.js` file. Here is the current sate of the `./app.js` file
+
+```jsx
+require("dotenv").config();
+const express = reuire("express");
+const cors = require("cors");
+const connectToDb = require("./db/bd.js");
+const serverRoutes = require("./routes/serverRouter.js");
+const userRoutes = require("./routes/userRouter.js");
+
+// step 1: initialize the express app
+const app = express();
+
+// step 2: configure app level middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// step 3: connect to the DB
+connectToDb();
+
+// step: 4: API routes configuration
+app.use("/", serverRoutes); //  <--- Server Specific API Routes
+app.use("/users", userRoutes); // <--- User Specific API Routes (Done already)
+app.use("/captains", captainRoutes);
+
+// step 5: export the app instance
+module.exports = app;
+```
+
+#### Define the `GET /users/profile ` API End Point
+
+If not done yet, Create a file named `userRoutes.js` in the `./routes/` directory and define the the API end point `GET /users/profile` in the `./routes/userRoutes.js ` file. Here is the current state of the `./routes/userRoutes.js` file
+
+```jsx
+const express = require("express");
+const userRouter = express.Router();
+const userControllers = require("../controllers/userController.js");
+const authMiddleware = require("../middleware/authMiddleware.js");
+
+// define user specific API end point
+userRouter.post("/register", userControllers.registerUser); // <--- register user API end point
+userRotues.post("/login", userControllers.loginUser); //  <--- Login an existing user
+userRoutes.get(
+  "/profile",
+  authMiddleware.authUser,
+  userControllers.getUserProfile
+); // <--- Get loggedin user's profile information
+userRoutes.get(
+  "/users/logout",
+  authMiddleware.authUser,
+  userControllers.logoutUser
+); // <--- Logout an user
+
+// export user router
+module.exports = userRouter;
+```
+
+#### Implement Middleware for the API End Point
+
+##### `authUser` Middleware Implementation
+
+`authUser` is a middleware function defined in the `./middleware/uathMiddleware.js` file. The middleware basically authenticates a user using token verification and add the user information in the `request` object, if it can authenticate the user successfully. The implementation of the middleware is as follows:
+
+- Extract the `token` from the `req.cookies` or `req.headers.authorization` .
+- Check if the `token` is found or not. If not, then terminate the request-response cycle and send an error message saying ‘Unauthorized access’ to the front end with status code 401.
+- If not defined already, then define a model named `blacklistTokenModel` in the `./models/blacklistTokenModel.js` file for the black listed token
+- Import the `blacklistTokenModel` model from the `./models/blacklistTokenModel.js` file
+- Using the `blacklistTokenModel`, Check if the token is black listed already or not. If the token is found to be a black listed token then terminate the request-response cycle and send an error message saying "Unauthorized access" to the front end with status code 401.
+- Decode the token using `jwt.verify(token, secret)` method which ultimately return a decoded object containing the user ID ( i.e. `_id` ) within it
+- Now find the user from the database using the user ID found in the decoded object.
+- Add the user information in the `request` object with a key `user` so that the other middleware or controller function that gets execute after this middleware can access the user information by `req.user` .
+
+Here is how the `./middleware/authMiddleware.js` file looks like at this point:
+
+```jsx
+const userModel = require("../models/userModel.js");
+const jwt = require("jsonwebtoken");
+const blacklistTokenModel = require("../mdoels/blacklistTokenModel.js");
+
+// @name: authUser
+// @desc: Authenticate a user by using the token validation
+// @auth: Omar Bin Saleh
+const authUser = async (req, res, next) => {
+  // step 1: check if the token is found or not
+  const token = req.cookies?.token || req.headers?.authorization?.split(" ")[1];
+  if (!token) {
+    return res
+      .status(401)
+      .json({ success: false, message: "Unauthorized access" });
+  }
+
+  try {
+    // step 2: check if the token is black listed
+    const isBlackListed = await blacklistTokenModel.findOne({ token });
+    if (isBlackListed) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized access" });
+    }
+
+    // step 3: decode the token
+    const decodedObj = jwt.verify(token, process.env.JWT_SECRET);
+
+    // step 4: check if the user is found or not
+    const user = await userModel.findOne({ _id: decodedObj._id });
+    if (!user) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized access" });
+    }
+
+    // step 5: add the user information in the request object
+    req.user = user;
+    return next();
+  } catch (error) {
+    return res
+      .status(401)
+      .json({ success: false, message: "Unauthorized access" });
+  }
+};
+
+// exports all auth middleware
+module.exports = { authUser };
+```
+
+#### Implement the Contorllers for the API End Point
+
+##### `logoutUser` Controller Implementation
+
+`logoutUser` controller is a controller function that handle all the functionality specific to logout user API end point. The following are how the controller are implemented
+
+- Create a function named `logoutUser` in the `./controllers/userControllers.js` file
+- Save the token in the database and mark it as blacklisted token
+- In the function body, Clear token from the cookies using `req.clearCookie(tokenName)`
+- Send a response to the front end with a success message and the blacklisted token
+- If something goes wrong in the process, catch the error and send an error response to the front end with the error and an error message.
+  Here is how the `./controllers/userController.js` file looks like at this point:
+
+```jsx
+const { validationResult } = require("express-validator");
+const userModel = require("../models/userModels.js");
+const blacklistTokenModel = require("../models/blacklistTokenModel.js");
+const userServices = require("../services/userService.js");
+
+// @name: registerUser
+// @path: POST /users/register
+// @desc: Create a new user
+// @auth: Omar Bin Saleh
+const registerUser = async (req, res, next) => {
+  try {
+    // step 1: extract data from the request body
+    const { fullName, email, password } = req.body;
+
+    // step 2: handle firstName, email and password validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    // step 3: check if user exists with the same email
+    const isUserExists = await userModel.findOne({ email });
+    if (isUserExists) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "User already exists with this email",
+        });
+    }
+
+    // step 4: hash the password
+    const hashedPassword = await userModel.hashPassword(password);
+
+    // step 5: create a new user
+    const user = await userServices.createUser({
+      firstName: fullName.firstName,
+      lastName: fullName.lastName,
+      email,
+      password: hashedPassword,
+    });
+
+    // step 6: generate token
+    const token = user.generateAuthToken();
+
+    // step 7: set the token in the cookies
+    res.cookie("token", token);
+
+    // step 8: send a success response to the client
+    res.status(201).json({
+      token,
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        __v: user.__v,
+      },
+      success: true,
+      message: "User registered successfully!",
+    });
+  } catch (error) {
+    res.status(500).json({ error, success: false, message: error.message });
+  }
+};
+
+// @name: findUsers
+// @path: GET /users
+// @desc: retrive all the users from the DB;
+// @auth: Omar Bin Saleh
+const getAllUsers = async (req, res, next) => {
+  try {
+    const users = [];
+    res.send({
+      users,
+      success: true,
+      message: "all users has been returned successfully",
+    });
+    next();
+  } catch (error) {
+    res.status(500).json({ success: false, error, message: error.message });
+  }
+};
+
+// @name: loginUser
+// @path: POST /users/login
+// @desc: allow an existing user to login
+// @auth: Omar Bin Saleh
+const loginUser = async (req, res, next) => {
+  try {
+    // step 1: extract data from the request body
+    const { email, password } = req.body;
+
+    // step 2: email and password error validation
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Invalid email or password",
+          errors: errors.array(),
+        });
+    }
+
+    // step 3: find user in the database with the email
+    const user = await userModel.findOne({ email }).select("+password");
+
+    // step 4: check if the user already exists or not
+    if (!user) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid email or password" });
+    }
+
+    // step 5: check if the password is matching
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid email or password" });
+    }
+
+    // step 6: generate the authentication token
+    const token = user.generateAuthToken();
+
+    // step 7: set the token in the cookies
+    res.cookie("token", token);
+
+    // step 8: send the user and the token to the font end
+    res.status(200).json({
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        __v: user.__v,
+      },
+      token,
+      success: true,
+      message: "User loggedin successfully",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message, error });
+  }
+};
+
+// @name: getUserProfile
+// @path: GET /users/profile
+// @midd: authUser > getUserProfile
+// @desc: return profile information of a logged-in user
+// @auth: Omar Bin Saleh
+const getUserProfile = async (req, res, next) => {
+  res
+    .status(200)
+    .json({
+      user: req.user,
+      success: true,
+      message: "User profile is returned",
+    });
+};
+
+// @name: logoutUser
+// @path: GET /users/logout
+// @midd: authUser > logoutUser
+// @desc: allow user to logout of the system
+// @auth: Omar Bin Saleh
+const logoutUser = async (req, res, next) => {
+  try {
+    // step 1: save the token in the database as black listed token
+    const token =
+      req.cookies?.token || req.headers.authorization?.split(" ")[1];
+    const blacklistToken = await blacklistTokenModel.create({ token });
+
+    // step 2: clear the token from the cookies
+    res.clearCookie("token");
+
+    // step 3: send a response to the front end with the black listed token
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "User logged out successfully",
+        blacklistToken: blacklistToken.token,
+      });
+  } catch (error) {
+    res
+      .status(401)
+      .json({
+        success: false,
+        message: "Unauthorized access or Something went wrong",
+      });
+  }
+};
+
+// exports user's controllers
+module.exports = {
+  registerUser,
+  getAllUsers,
+  loginUser,
+  getUserProfile,
+  logoutUser,
+};
+```
+
+---
+
+##### `authUser` Middleware Implementation
 
 `authUser` is a middleware function defined in the `./middleware/uathMiddleware.js` file. The middleware basically authenticates a user using token verification and add the user information in the `request` object, if it can authenticate the user successfully. The implementation of the middleware is as follows:
 
@@ -1039,7 +1486,7 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
   module.exports = blacklistTokenModel;
   ```
 
-### `logoutUser` Controller Implementation
+##### `logoutUser` Controller Implementation
 
 `logoutUser` controller is a controller function that handle all the functionality specific to logout user API end point. The following are how the controller are implemented
 
@@ -1089,7 +1536,17 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
       res.cookie("token", token);
 
       // step 6: send a success response to the client
-      res.status(201).json({ token, user });
+      res.status(201).json({
+        token,
+        user: {
+          _id: user._id,
+          fullName: user.fullName,
+          email: user.email,
+          __v: user.__v,
+        },
+        success: true,
+        message: "User registered successfully!",
+      });
     } catch (error) {
       res.status(500).json({ error, message: error.message });
     }
@@ -1113,39 +1570,59 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
   // @desc: allow an existing user to login
   // @auth: Omar Bin Saleh
   const loginUser = async (req, res, next) => {
-    // step 1: extract data from the request body
-    const { email, password } = req.body;
+    try {
+      // step 1: extract data from the request body
+      const { email, password } = req.body;
 
-    // step 2: email and password error validation
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      // step 2: email and password error validation
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid email or password",
+          errors: errors.array(),
+        });
+      }
+
+      // step 3: find user in the database with the email
+      const user = await userModel.findOne({ email }).select("+password");
+
+      // step 4: check if the user already exists or not
+      if (!user) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Invalid email or password" });
+      }
+
+      // step 5: check if the password is matching
+      const isMatch = await user.comparePassword(password);
+      if (!isMatch) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Invalid email or password" });
+      }
+
+      // step 6: generate the authentication token
+      const token = user.generateAuthToken();
+
+      // step 7: set the token in the cookies
+      res.cookie("token", token);
+
+      // step 8: send the user and the token to the font end
+      res.status(200).json({
+        user: {
+          _id: user._id,
+          fullName: user.fullName,
+          email: user.email,
+          __v: user.__v,
+        },
+        token,
+        success: true,
+        message: "User loggedin successfully",
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message, error });
     }
-
-    // step 3: find user in the database with the email
-    const user = await userModel.findOne({ email }).select("+password");
-
-    // step 4: check if the user already exists or not
-    if (!user) {
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
-
-    // step 5: check if the password is matching
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
-
-    // step 6: generate the authentication token
-    const token = await user.generateToken();
-
-    // step 7: set the token in the cookies
-    res.cookie("token", token);
-
-    // step 8: send the user and the token to the font end
-    res
-      .status(200)
-      .json({ user, token, message: "User loggedin successfully" });
   };
 
   // @name: getUserProfile
@@ -1169,7 +1646,7 @@ module.exports = { registerUser, findUsers, loginUser, getUserProfile };
       // step 1: mark the token as black listed token
       const token =
         req.cookies?.token || req.headers.authorization?.split(" ")[1];
-      const blacklistToken = await blacklistTokenModel({ token });
+      const blacklistToken = await blacklistTokenModel.create({ token });
 
       // step 2: clear the token from the cookies
       res.crearCookie("token");
