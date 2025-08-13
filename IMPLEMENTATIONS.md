@@ -998,7 +998,7 @@ const getUserProfile = async (req, res, next) => {
 module.exports = { registerUser, findUsers, loginUser, getUserProfile };
 ```
 
-### \*\*04. `GET /users/logout` - Logout an User
+### **04. `GET /users/logout` - Logout an User**
 
 #### Create Model for the API End Point
 
@@ -1209,12 +1209,10 @@ const registerUser = async (req, res, next) => {
     // step 3: check if user exists with the same email
     const isUserExists = await userModel.findOne({ email });
     if (isUserExists) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "User already exists with this email",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "User already exists with this email",
+      });
     }
 
     // step 4: hash the password
@@ -1281,13 +1279,11 @@ const loginUser = async (req, res, next) => {
     // step 2: email and password error validation
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Invalid email or password",
-          errors: errors.array(),
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email or password",
+        errors: errors.array(),
+      });
     }
 
     // step 3: find user in the database with the email
@@ -1337,13 +1333,11 @@ const loginUser = async (req, res, next) => {
 // @desc: return profile information of a logged-in user
 // @auth: Omar Bin Saleh
 const getUserProfile = async (req, res, next) => {
-  res
-    .status(200)
-    .json({
-      user: req.user,
-      success: true,
-      message: "User profile is returned",
-    });
+  res.status(200).json({
+    user: req.user,
+    success: true,
+    message: "User profile is returned",
+  });
 };
 
 // @name: logoutUser
@@ -1362,20 +1356,16 @@ const logoutUser = async (req, res, next) => {
     res.clearCookie("token");
 
     // step 3: send a response to the front end with the black listed token
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "User logged out successfully",
-        blacklistToken: blacklistToken.token,
-      });
+    res.status(200).json({
+      success: true,
+      message: "User logged out successfully",
+      blacklistToken: blacklistToken.token,
+    });
   } catch (error) {
-    res
-      .status(401)
-      .json({
-        success: false,
-        message: "Unauthorized access or Something went wrong",
-      });
+    res.status(401).json({
+      success: false,
+      message: "Unauthorized access or Something went wrong",
+    });
   }
 };
 
@@ -1391,555 +1381,296 @@ module.exports = {
 
 ---
 
-##### `authUser` Middleware Implementation
+## Captain Specific API Eend Points Implementation
 
-`authUser` is a middleware function defined in the `./middleware/uathMiddleware.js` file. The middleware basically authenticates a user using token verification and add the user information in the `request` object, if it can authenticate the user successfully. The implementation of the middleware is as follows:
+### **01. `POST /captains/register` - Register a new Captain**
 
-- Extract the `token` from the `req.cookies` or `req.headers.authorization` .
-- Check if the `token` is found or not. If not, then terminate the request-response cycle and send an error message saying ‘Unauthorized access’ to the front end with status code 401.
-- If not defined already, then define a model named `blacklistTokenModel` in the `./models/blacklistTokenModel.js` file for the black listed token
-- Import the `blacklistTokenModel` model from the `./models/blacklistTokenModel.js` file
-- Using the `blacklistTokenModel`, Check if the token is black listed already or not. If the token is found to be a black listed token then terminate the request-response cycle and send an error message saying "Unauthorized access" to the front end with status code 401.
-- Decode the token using `jwt.verify(token, secret)` method which ultimately return a decoded object containing the user ID ( i.e. `_id` ) within it
-- Now find the user from the database using the user ID found in the decoded object.
-- Add the user information in the `request` object with a key `user` so that the other middleware or controller function that gets execute after this middleware can access the user information by `req.user` .
-  Here is how the `./middleware/authMiddleware.js` file looks like at this point:
+#### Create Moedels for the API End Point
 
-  ```jsx
-  const userModel = require("../models/userModel.js");
-  const jwt = require("jsonwebtoken");
-  const blacklistTokenModel = require("../mdoels/blacklistTokenModel.js");
+##### Captain Model Implementation
 
-  // @name: authUser
-  // @desc: Authenticate a user by using the token validation
-  // @auth: Omar Bin Saleh
-  const authUser = async (req, res, next) => {
-    // step 1: check if the token is found or not
-    const token =
-      req.cookies?.token || req.headers?.authorization?.split(" ")[1];
-    if (!token) {
-      return res.status(401).json({ message: "Unauthorized access" });
-    }
+Create a mongoose Schema for the captain model in the `./models/captainModel.js` file and using the `captainSchema`, Create a Model for the captain and finally export the `captainModel` from the `./models/captainModel.js` file. This is how the `./models/captainModel.js` file looks like:
 
-    // step 2: check if the token is black listed
-    const isBlackListed = await blacklistTokenModel.findOne({ token });
-    if (isBlackListed) {
-      return res.status(401).json({ message: "Unauthorized access" });
-    }
-
-    try {
-      // step 3: decode the token
-      const decodedObj = jwt.verify(token, process.env.JWT_SECRET);
-
-      // step 4: check if the user is found or not
-      const user = await userModel.findOne({ _id: decodedObj._id });
-      if (!user) {
-        return res.status(401).json({ message: "Unauthorized access" });
-      }
-
-      // step 5: add the user information in the request object
-      req.user = user;
-      return next();
-    } catch (error) {
-      return res.status(401).json({ message: "Unauthorized access" });
-    }
-  };
-
-  // exports all auth middleware
-  module.exports = { authUser };
-  ```
-
-### `blacklistTokenModel` Model Implementation
-
-`blacklistTokenModel` is a model to store all the black listed token in the databas. When a user logout, the logout API will take the token, which the user got after successfull login or registeration as a new user, and mark to the token in the database as a black listed token. The following are the step by step implementation of the model
-
-- Create a file named `blacklistTokenModel.js` in the `./mdodels` directory. In the `./models/blacklistTokenModel.js` file, create the schema for a blacklist token in such way that the blacklist token should automatically be deleted from the database after 24 hours from their creation.
-- Using the `blacklistTokenSchema`, create a model and export it.
-
-  Here is how the `./models/blacklistTokenModel.js` file looks like at this point
-
-  ```jsx
+```jsx
   // import dependencies
-  const mongoose = require("mongoose");
+  const mongoose = require('mongoose');
+  const bcrypt = require('bcrypt');
+  const jwt = require('jsonwebtoken');
 
-  // define schema for blacklist token
-  const blacklistTokenSchema = new mongoose.Schema({
-    token: {
+  // define captain shema
+  const captainSchema = new mongoose.Schema({
+    fullName: {
+      firstName: {
+        type: String,
+        required: true,
+        minlength: [3, 'First name must be at least 3 characters long']
+      },
+      lastName: {
+        type: String,
+        minlength: [3, 'Last name must be at least 3 characters long']
+      }
+    },
+    email: {
       type: String,
       required: true,
       unique: true,
+      minlength: [5, 'Email must be at least 5 characters long']
     },
-    createAt: {
-      type: Date,
-      default: Date.now,
-      expires: 86400, // 24 hours in seconds
+    password: {
+      type: String,
+      required: true,
+      select: false
     },
-  });
-
-  // create model for blacklist token
-  const blacklistTokenModel = mongoose.model(
-    "BlacklistTokens",
-    blacklistTokenSchema
-  );
-
-  // exports the blacklistTokenModel
-  module.exports = blacklistTokenModel;
-  ```
-
-##### `logoutUser` Controller Implementation
-
-`logoutUser` controller is a controller function that handle all the functionality specific to logout user API end point. The following are how the controller are implemented
-
-- Create a function named `logoutUser` in the `./controllers/userControllers.js` file
-- Save the token in the database and mark it as blacklisted token
-- In the function body, Clear token from the cookies using `req.clearCookie(tokenName)`
-- Send a response to the front end with a success message and the blacklisted token
-- If something goes wrong in the process, catch the error and send an error response to the front end with the error and an error message.
-  Here is how the `./controllers/userController.js` file looks like at this point:
-
-  ```jsx
-  const { validationResult } = require("express-validator");
-  const userModel = require("../models/userModels.js");
-  const blacklistTokenModel = require("../models/blacklistTokenModel.js");
-  const userServices = require("../services/userService.js");
-
-  // @name: registerUser
-  // @path: POST /user/register
-  // @desc: Create a new user
-  // @auth: Omar Bin Saleh
-  const registerUser = async (req, res, next) => {
-    try {
-      // step 1: extract data from the request body
-      const { fullName, email, password } = req.body;
-
-      // step 2: handle firstName, email and password validation errors
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
-
-      // step 3: hash the password
-      const hashedPassword = await userModel.hashedPassword(password);
-
-      // step 4: create a new user
-      const user = await userServices.createUser({
-        firstName: fullName.firstName,
-        lastName: fullName.lastName,
-        email,
-        password: hashedPassword,
-      });
-
-      // step 5: generate token
-      const token = user.generateAuthToken();
-
-      // step 6: set the token in the cookies
-      res.cookie("token", token);
-
-      // step 6: send a success response to the client
-      res.status(201).json({
-        token,
-        user: {
-          _id: user._id,
-          fullName: user.fullName,
-          email: user.email,
-          __v: user.__v,
-        },
-        success: true,
-        message: "User registered successfully!",
-      });
-    } catch (error) {
-      res.status(500).json({ error, message: error.message });
-    }
-  };
-
-  // @name: findUsers
-  // @path: GET /user
-  // @desc: retrive all the users from the DB;
-  // @auth: Omar Bin Saleh
-  const getAllUsers = async (req, res, next) => {
-    try {
-      res.send({ user: "all users has been returned successfully" });
-      next();
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  };
-
-  // @name: loginUser
-  // @path: POST /user/login
-  // @desc: allow an existing user to login
-  // @auth: Omar Bin Saleh
-  const loginUser = async (req, res, next) => {
-    try {
-      // step 1: extract data from the request body
-      const { email, password } = req.body;
-
-      // step 2: email and password error validation
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid email or password",
-          errors: errors.array(),
-        });
-      }
-
-      // step 3: find user in the database with the email
-      const user = await userModel.findOne({ email }).select("+password");
-
-      // step 4: check if the user already exists or not
-      if (!user) {
-        return res
-          .status(401)
-          .json({ success: false, message: "Invalid email or password" });
-      }
-
-      // step 5: check if the password is matching
-      const isMatch = await user.comparePassword(password);
-      if (!isMatch) {
-        return res
-          .status(401)
-          .json({ success: false, message: "Invalid email or password" });
-      }
-
-      // step 6: generate the authentication token
-      const token = user.generateAuthToken();
-
-      // step 7: set the token in the cookies
-      res.cookie("token", token);
-
-      // step 8: send the user and the token to the font end
-      res.status(200).json({
-        user: {
-          _id: user._id,
-          fullName: user.fullName,
-          email: user.email,
-          __v: user.__v,
-        },
-        token,
-        success: true,
-        message: "User loggedin successfully",
-      });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message, error });
-    }
-  };
-
-  // @name: getUserProfile
-  // @path: GET /user/profile
-  // @midd: authUser > getUserProfile
-  // @desc: return profile information of a logged-in user
-  // @auth: Omar Bin Saleh
-  const getUserProfile = async (req, res, next) => {
-    res
-      .status(200)
-      .json({ user: req.user, message: "User profile is returned" });
-  };
-
-  // @name: logoutUser
-  // @path: GET /user/logout
-  // @midd: authUser > logoutUser
-  // @desc: allow user to logout of the system
-  // @auth: Omar Bin Saleh
-  const logoutUser = async (req, res, next) => {
-    try {
-      // step 1: mark the token as black listed token
-      const token =
-        req.cookies?.token || req.headers.authorization?.split(" ")[1];
-      const blacklistToken = await blacklistTokenModel.create({ token });
-
-      // step 2: clear the token from the cookies
-      res.crearCookie("token");
-
-      // step 3: send a response to the front end with the black listed token
-      res
-        .status(200)
-        .json({ message: "User logged out successfully", blacklistToken });
-    } catch (error) {
-      res
-        .status(401)
-        .json({ message: "Unauthorized access or Something went wrong" });
-    }
-  };
-
-  // exports user's controllers
-  module.exports = {
-    registerUser,
-    getAllUsers,
-    loginUser,
-    getUserProfile,
-    logoutUser,
-  };
-  ```
-
-## Captain Specific API End Points Implementation
-
-- Create a mongoose Schema for the captain model in the `./models/captainModel.js` file and using the `captainSchema`, Create a Model for the captain and finally export the `captainModel` from the `./models/captainModel.js` file. This is how the `./models/captainModel.js` file looks like:
-
-  ```jsx
-    // import dependencies
-    const mongoose = require('mongoose');
-    const bcrypt = require('bcrypt');
-    const jwt = require('jsonwebtoken');
-
-    // define captain shema
-    const captainSchema = new mongoose.Schema({
-      fullName: {
-        firstName: {
-          type: String,
-          required: true,
-          minlength: [3, 'First name must be at least 3 characters long']
-        },
-        lastName: {
-          type: String,
-          minlength: [3, 'Last name must be at least 3 characters long']
-        }
-      },
-      email: {
+    socketId: {
+      type: String
+    },
+    status: {
+      type: String,
+      enum: ['active', 'inactive'],
+      default: 'inactive'
+    },
+    vehicle: {
+      color: {
         type: String,
         required: true,
-        unique: true,
-        minlength: [5, 'Email must be at least 5 characters long']
+        minlength: [3, 'Color must be at least 3 character']
       },
-      password: {
+      plate: {
         type: String,
         required: true,
-        select: false
+        minlength: [3, 'Plate must be at least 3 characters long']
       },
-      socketId: {
-        type: String
+      capacity: {
+        type: Number
+        required: true,
+        min: [1, 'Capacity must be at least 1']
       },
-      status: {
+      vehicleType: {
         type: String,
-        enum: ['active', 'inactive'],
-        default: 'inactive'
-      },
-      vehicle: {
-        color: {
-          type: String,
-          required: true,
-          minlength: [3, 'Color must be at least 3 character']
-        },
-        plate: {
-          type: String,
-          required: true,
-          minlength: [3, 'Plate must be at least 3 characters long']
-        },
-        capacity: {
-          type: Number
-          required: true,
-          min: [1, 'Capacity must be at least 1']
-        },
-        vehicleType: {
-          type: String,
-          required: true,
-          enum: ['car', 'motorcycle', 'auto']
-        }
-      },
-      location: {
-        lat: {
-          type: Number
-        },
-        lng: {
-          type: Number
-        }
+        required: true,
+        enum: ['car', 'motorcycle', 'auto']
       }
-    })
-
-    // add methods
-    captainSchema.methods.generateToken = function() {
-      const token = jwt.sign({_id: this._id}, process.env.JWT_SECRET, {expiresIn: '24h'});
-      return token;
+    },
+    location: {
+      lat: {
+        type: Number
+      },
+      lng: {
+        type: Number
+      }
     }
+  })
 
-    captainSchema.methods.comparePassword = async function(password) {
-      return await bcrypt.compare(password, this.password);
-    }
-
-    captainSchema.statics.hashPassword = async function (password) {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      return hashedPassword;
-    }
-
-    // create captain model
-    const captainModel = mongoose.model('Captains', captainSchema);
-
-    // export the captain model
-    module.exports = captainModel;
-  ```
-
-- Create a file named `captainRoutes.js` in the `./routes` directory. In the `./routes/captainRoutes.js` file, specify all the API end points specific to the captain and exports them from there.
-- Import the captain routes in the `app.js` file and configure a captain route. Here is how the `app.js` file looks like at this point:
-
-  ```jsx
-  // import dependencies
-  require("dotenv").config();
-  const express = require("express");
-  const cors = require("cors");
-  const connectToDb = require("./db/db");
-  const userRoutes = require("./routes/userRoutes.js");
-  const serverRoutes = require("./routes/serverRoutes.js");
-  const captainRoutes = require("./routes/captainRoutes.js");
-
-  // step 1: initialize the express app
-  const app = express();
-
-  /  // step 2: configure app level middleware
-  app.use(cors());
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
-  app.use(cookieParser());
-
-  // step 3: connect to the DB
-  connectToDb();
-
-  // step: 4: API routes configuration
-  app.use("/", serverRoutes); // this will execute all the server specific routes
-  app.use("/users", userRoutes); //  <--- user routes configuration
-  app.use("/captains", captainRoutes); //  <--- captain routes configuration
-
-  // step 5: export the app instance
-  module.exports = app;
-  ```
-
-- Create a file named `captainRoutes.js` in the `./routes` directory. This `./routes/captainRoute.js` file will contain all the specification of the captain specific API end points. Here is how the `./routes/captainRoutes.js` file looks like at this point:
-
-  ```jsx
-  // import dependencies
-  const express = require("express");
-  const captainControllers = require("../controllers/captainController.js");
-  const captainMiddleware = require("../middleware/captainMiddleware.js");
-  const { body } = require("express-validator");
-
-  // initialize captain router
-  const captainRouter = express.Router();
-
-  // define API for captain
-  // @name: Regisger Captain API
-  // @desc: Register a new user in the system
-  captainRouter.post(
-    "/register",
-    [
-      body("fullName.firstName")
-        .isLength({ min: 3 })
-        .withMessage("First name must be at least 3 characters long"),
-      body("fullName.lastName")
-        .isLength({ min: 3 })
-        .withMessage("Last name must be at least 3 characters long"),
-      body("email").isEmail().withMessage("Invalid Email"),
-      body("password")
-        .isLength({ min: 6 })
-        .withMessage("Password must be at least 6 characters long"),
-      body("vehicle.color")
-        .isLength({ min: 3 })
-        .withMessage("Color must be at least 3 characters long"),
-      body("vehicle.plate")
-        .isLength({ min: 3 })
-        .withMessage("Plate must be at least 3 characters long"),
-      body("vehicle.capacity")
-        .isInt({ min: 1 })
-        .withMessage("Capacity must be at least 1"),
-      body("vehicle.vehicleType")
-        .isIn(["car", "motorcycle", "auto"])
-        .withMessage("Invalid vehicle type"),
-    ],
-    captainControllers.registerCaptain
-  );
-
-  // @name: Login Captain API
-  // @desc: Allow a captain login
-  captainRouter.post(
-    "/login",
-    [
-      body("email").isEmail().withMessage("Invalid Email"),
-      body("password").isLength({ min: 6 }).withMessage("Invalid Password"),
-    ],
-    captainControllers.loginCaptain
-  );
-
-  // @name: Captain Profile API
-  // @desc: Retrive a captain's profile information
-  captainRouter.get(
-    "/profile",
-    captainMiddleware.authCaptain,
-    captainControllers.getCaptainProfile
-  );
-
-  // @name: Logout API for Captain
-  // @desc: Logout a captain from the system
-  captainRouter.get(
-    "/logout",
-    captainMiddleware.authCaptain,
-    captainControllers.logoutCaptain
-  );
-
-  // exports captain router
-  module.exports = captainRouter;
-  ```
-
-- Define all the necessary middleware functions in the `./middleware/captainMiddleware.js` file.
-- Create a file named `captainController.js` in the `./controllers` directory and define all the controllers specific to captain routes in the `./controllers/captainController.js` file and export them all from there.
-- If needed, define appropriate services for the controllers in the `./services/captainService.js` file and export them
-
-### The implementation of the `captainModel` - (A Model for the Captain)
-
-### `authCaptain` Middleware Implementation
-
-Create a middleware function in the `./middleware/captainMiddleware.js` file and named it as `authCaptain` which will basically authenticate the idendtity of a captain using token validation. The followings are step by step actions that the `authCaptain` middleware performs
-
-- Extract the token from the cookies or from the headers
-- Check if the token is found or not. If NOT, then send an error response to the front end with status code 401 and a message saying 'Unauthorized access'
-- Check if the token is black listed or not
-- Decode the token using the `jwt.verify(token, secret)` method provided by the `jsonwebtoken` package. and extract the captain ID `_id` from the decoded information return by the `jwt.verify(token, secret)` method.
-- Find the captain from the database using the captin id and validate the captain;
-- If the captain is not found, terminate the request-response cycle and send an error response to the front end with a status code 401 and an error message saying 'Unauthorized access'.
-- Add the captain information in the request object so that the information can be accessed from the other middleware or controllers that runs after this `authCaptain` middleware.
-- call the `next` function to move forword.
-- If something goes wrong in the process, then catch the error and terminate the request-response cycle and send an error response to the front end with a status code 401 and a message saying 'Unauthorized access'.
-
-Here is how the `./middleware/captainMiddleware.js` file looks like at this point:
-
-```jsx
-const jwt = require("jsonwebtoken");
-const captainModel = require("../models/captainModel.js");
-
-// @name: authCaptain
-// @desc: A middleware function to authenticate a captain by using the token validation
-// @auth: Omar Bin Saleh
-const authCaptain = async (req, res, next) => {
-  // step 1: check if the token is found or not
-  const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
-  if (!token) {
-    return res.status(401).json({ message: "Unauthorized access" });
+  // add methods
+  captainSchema.methods.generateToken = function() {
+    const token = jwt.sign({_id: this._id}, process.env.JWT_SECRET, {expiresIn: '24h'});
+    return token;
   }
 
+  captainSchema.methods.comparePassword = async function(password) {
+    return await bcrypt.compare(password, this.password);
+  }
+
+  captainSchema.statics.hashPassword = async function (password) {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    return hashedPassword;
+  }
+
+  // create captain model
+  const captainModel = mongoose.model('Captains', captainSchema);
+
+  // export the captain model
+  module.exports = captainModel;
+```
+
+#### Configure Routes for the API End Point
+
+Create a file named `captainRoutes.js` in the `./routes` directory. In the `./routes/captainRoutes.js` file, specify all the API end points specific to the captain and exports them from there.
+
+Import the captain routes in the `app.js` file and configure a captain route. Here is how the `app.js` file looks like at this point:
+
+```jsx
+// import dependencies
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const connectToDb = require("./db/db");
+const userRoutes = require("./routes/userRoutes.js");
+const serverRoutes = require("./routes/serverRoutes.js");
+const captainRoutes = require("./routes/captainRoutes.js");
+
+// step 1: initialize the express app
+const app = express();
+
+/  // step 2: configure app level middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// step 3: connect to the DB
+connectToDb();
+
+// step: 4: API routes configuration
+app.use("/", serverRoutes); // this will execute all the server specific routes
+app.use("/users", userRoutes); //  <--- user routes configuration
+app.use("/captains", captainRoutes); //  <--- captain routes configuration
+
+// step 5: export the app instance
+module.exports = app;
+```
+
+#### Define the `POST /captains/register` API End Point
+
+Create a file named `captainRoutes.js` in the `./routes` directory. This `./routes/captainRoute.js` file will contain all the specification of the captain specific API end points. Here is how the `./routes/captainRoutes.js` file looks like at this point:
+
+```jsx
+// import dependencies
+const express = require("express");
+const captainControllers = require("../controllers/captainController.js");
+const captainMiddleware = require("../middleware/captainMiddleware.js");
+const { body } = require("express-validator");
+
+// initialize captain router
+const captainRouter = express.Router();
+
+// define API for captain
+// @name: Regisger Captain API
+// @desc: Register a new user in the system
+captainRouter.post(
+  "/register",
+  [
+    body("fullName.firstName")
+      .isLength({ min: 3 })
+      .withMessage("First name must be at least 3 characters long"),
+    body("fullName.lastName")
+      .isLength({ min: 3 })
+      .withMessage("Last name must be at least 3 characters long"),
+    body("email").isEmail().withMessage("Invalid Email"),
+    body("password")
+      .isLength({ min: 6 })
+      .withMessage("Password must be at least 6 characters long"),
+    body("vehicle.color")
+      .isLength({ min: 3 })
+      .withMessage("Color must be at least 3 characters long"),
+    body("vehicle.plate")
+      .isLength({ min: 3 })
+      .withMessage("Plate must be at least 3 characters long"),
+    body("vehicle.capacity")
+      .isInt({ min: 1 })
+      .withMessage("Capacity must be at least 1"),
+    body("vehicle.vehicleType")
+      .isIn(["car", "motorcycle", "auto"])
+      .withMessage("Invalid vehicle type"),
+  ],
+  captainControllers.registerCaptain
+);
+
+// exports captain router
+module.exports = captainRouter;
+```
+
+#### Implement the Controllers for the `POST /captains/register` End Point
+
+##### `registerCaptain` Controller Implementation
+
+`registerCaptain` is controller function defined in the `./controllers/captainController.js` file with the purpose of handle the request and response of the captain registeration API . The followings are the implementation of the controller
+
+- Extract all the ncessary information from the request body
+- Perform an error validation for the all the fields that are comming through the request body
+- Check if there is a captain in the database with the same email.
+- Hash the password using `captainModel.hashPassword(password)` method
+- Register the Captain using the `captainModel.create(captainInfo)` and save the new created captain in a variable named `captain`.
+- Genereate a authentication token using the `captain.generateAuthToken()` method
+- Set the token in the cookies using `res.cookie(tokenName, token)` method.
+- Send a response to the front end with the captain information, token and a status code 201.
+- If Soemthing goes wrong in the process, then catch the error and handle the error appropriately
+
+Here is how the `./controllers/captainController.js` file looks like at this point:
+
+```jsx
+// import necessary dependencies
+const { validationResult } = require("express-validator");
+const captainModel = require("../models/captainModel.js");
+const captainService = require("../services/captainService.js");
+
+// @name: registerCaptain
+// @path: POST /captains/register
+// @desc: Register a new captain in the system and send response to the front end after that
+// @auth: Omar Bin Saleh
+const registerCaptain = async (req, res, next) => {
   try {
-    // step 2: check if the token is black listed or not
-    const isBlackListed = await blacklistTokenModel.findOne({ token });
-    if (isBlackListed) {
-      return res.status(401).json({ message: "Unauthorized access" });
+    // step 1: extract necessary information from the request body
+    const { fullName, email, password, vehicle } = req.body;
+
+    // step 2: perfor error validation for all the field comming through the request body
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid inputs",
+        errors: errors.array(),
+      });
     }
 
-    // step 3: verify the token and validate the captain with the captai ID (_id)
-    const decodedObj = jwt.verify(token, process.env.JWT_SECRET);
-    const captain = await captainModel.findOne({ _id: decodedObj._id });
-    if (!captain) {
-      return res.status(401).json({ message: "Unauthorized access" });
+    // step 3: check if the is any captain in the database with the same email
+    const isCaptainExist = await captainModel.findOne({ email });
+    if (isCaptainExist) {
+      return res.status(400).json({
+        success: false,
+        message: "Captain already exists with this email",
+      });
     }
 
-    // step 4: add the captain information in the request object
-    req.captain = captain;
-    return next();
+    // step 4: hash the password
+    const hashedPassword = await captainModel.hashPassword(password);
+
+    // step 5: create captain
+    const captain = await captainServices.createCaptain({
+      firstName: fullName.firstName,
+      lastName: fullName.lastName,
+      email,
+      password: hashedPassword,
+      color: vehicle.color,
+      plate: vehicle.plate,
+      capacity: vehicle.capacity,
+      vehicleType: vehicle.vehicleType,
+    });
+
+    // step 6: generate token
+    const token = await captain.generateAuthToken();
+
+    // step 7: set the token in the cookies
+    res.cookie("token", token);
+
+    // step 8: send response to the front end
+    res.status(201).json({
+      captain: {
+        _id: captain._id,
+        fullName: captain.fullName,
+        email: captain.email,
+        status: captain.status,
+        vehicle: captain.vehicle,
+        __v: vehicle.__v,
+      },
+      token,
+      success: true,
+      message: "Captain registered successfully",
+    });
   } catch (error) {
-    return res.status(401).json({ message: "Unauthorized access", error });
+    res.status(402).json({ error, success: false, message: error.message });
   }
 };
 
-// export the middleware
-module.exports = { authCaptain };
+// exports captain controllers
+module.exports = { registerCaptain };
 ```
 
-### `createCaptain` Service Implementation
+#### Create Services for the `POST /captains/register` API End Point
+
+Create all the necessary services required for the `POST /captains/register` API end point in the `./services/captainServices.js` file.
+
+##### `createCaptain` Service Implementation
 
 `createCaptain` is service which create a captain in the database and finall return the new created captain. The implementation of this service is as follows;
 
@@ -2014,84 +1745,207 @@ const createCaptain = async ({
 module.exports = { createCaptain };
 ```
 
-### `registerCaptain` Controller Implementation
+### **02. `POST /captains/login` - Login Captain API**
 
-`registerCaptain` is controller function defined in the `./controllers/captainController.js` file with the purpose of handle the request and response of the captain registeration API . The followings are the implementation of the controller
+An API end point to allow an existing captain login with their credentials
 
-- Extract all the ncessary information from the request body
-- Perform an error validation for the all the fields that are comming through the request body
-- Check if there is a captain in the database with the same email.
-- Hash the password using `captainModel.hashPassword(password)` method
-- Register the Captain using the `captainModel.create(captainInfo)` and save the new created captain in a variable named `captain`.
-- Genereate a authentication token using the `captain.generateAuthToken()` method
-- Set the token in the cookies using `res.cookie(tokenName, token)` method.
-- Send a response to the front end with the captain information, token and a status code 201.
-- If Soemthing goes wrong in the process, then catch the error and handle the error appropriately
+#### Create Models for the API End Point
 
-Here is how the `./controllers/captainController.js` file looks like at this point:
+##### Captain Model Implementation
+
+Create a mongoose Schema for the captain model in the `./models/captainModel.js` file and using the `captainSchema`, Create a Model for the captain and finally export the `captainModel` from the `./models/captainModel.js` file. This is how the `./models/captainModel.js` file looks like:
 
 ```jsx
-// import necessary dependencies
-const { validationResult } = require("express-validator");
-const captainModel = require("../models/captainModel.js");
-const captainService = require("../services/captainService.js");
+  // import dependencies
+  const mongoose = require('mongoose');
+  const bcrypt = require('bcrypt');
+  const jwt = require('jsonwebtoken');
 
-// @name: registerCaptain
-// @path: POST /captains/register
-// @desc: Register a new captain in the system and send response to the front end after that
-// @auth: Omar Bin Saleh
-const registerCaptain = async (req, res, next) => {
-  try {
-    // step 1: extract necessary information from the request body
-    const { fullName, email, password, vehicle } = request.body;
-
-    // step 2: perfor error validation for all the field comming through the request body
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+  // define captain shema
+  const captainSchema = new mongoose.Schema({
+    fullName: {
+      firstName: {
+        type: String,
+        required: true,
+        minlength: [3, 'First name must be at least 3 characters long']
+      },
+      lastName: {
+        type: String,
+        minlength: [3, 'Last name must be at least 3 characters long']
+      }
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      minlength: [5, 'Email must be at least 5 characters long']
+    },
+    password: {
+      type: String,
+      required: true,
+      select: false
+    },
+    socketId: {
+      type: String
+    },
+    status: {
+      type: String,
+      enum: ['active', 'inactive'],
+      default: 'inactive'
+    },
+    vehicle: {
+      color: {
+        type: String,
+        required: true,
+        minlength: [3, 'Color must be at least 3 character']
+      },
+      plate: {
+        type: String,
+        required: true,
+        minlength: [3, 'Plate must be at least 3 characters long']
+      },
+      capacity: {
+        type: Number
+        required: true,
+        min: [1, 'Capacity must be at least 1']
+      },
+      vehicleType: {
+        type: String,
+        required: true,
+        enum: ['car', 'motorcycle', 'auto']
+      }
+    },
+    location: {
+      lat: {
+        type: Number
+      },
+      lng: {
+        type: Number
+      }
     }
+  })
 
-    // step 3: check if there is a captain in the DB with the same email
-    const isCaptainExists = await captainModel.findOne({ email });
-    if (isCaptainExists) {
-      return res
-        .status(400)
-        .json({ message: "Captain already exists with the same email" });
-    }
-
-    // step 4: hash the password
-    const hashedPassword = await captainModel.hashPassword(password);
-
-    // step 5: create captain
-    const captain = await captainService.createCaptain({
-      firstName: fullName.firstName,
-      lastName: fullName.lastName,
-      email,
-      password: hashedPassword,
-      color: vehicle.color,
-      plate: vehicle.plate,
-      capacity: vehicle.capacity,
-      vehicleType: vehicle.vehicleType,
-    });
-
-    // step 6: generate token
-    const token = await captain.generateAuthToken();
-
-    // step 7: set the token in the cookies
-    res.cookie("token", token);
-
-    // step 8: send response to the front end
-    res.status(201).json({ captain, token });
-  } catch (error) {
-    res.status(402).json({ error, message: error.message });
+  // add methods
+  captainSchema.methods.generateToken = function() {
+    const token = jwt.sign({_id: this._id}, process.env.JWT_SECRET, {expiresIn: '24h'});
+    return token;
   }
-};
 
-// exports captain controllers
-module.exports = { registerCaptain };
+  captainSchema.methods.comparePassword = async function(password) {
+    return await bcrypt.compare(password, this.password);
+  }
+
+  captainSchema.statics.hashPassword = async function (password) {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    return hashedPassword;
+  }
+
+  // create captain model
+  const captainModel = mongoose.model('Captains', captainSchema);
+
+  // export the captain model
+  module.exports = captainModel;
 ```
 
-### `loginCaptain` Controller Implementation
+#### Configure Routes for the API End Point
+
+Create a file named `captainRoutes.js` in the `./routes` directory. In the `./routes/captainRoutes.js` file, specify all the API end points specific to the captain and exports them from there.
+
+Import the captain routes in the `app.js` file and configure a captain route. Here is how the `app.js` file looks like at this point:
+
+```jsx
+// import dependencies
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const connectToDb = require("./db/db");
+const userRoutes = require("./routes/userRoutes.js");
+const serverRoutes = require("./routes/serverRoutes.js");
+const captainRoutes = require("./routes/captainRoutes.js");
+
+// step 1: initialize the express app
+const app = express();
+
+/  // step 2: configure app level middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// step 3: connect to the DB
+connectToDb();
+
+// step: 4: API routes configuration
+app.use("/", serverRoutes); // this will execute all the server specific routes
+app.use("/users", userRoutes); //  <--- user routes configuration
+app.use("/captains", captainRoutes); //  <--- captain routes configuration
+
+// step 5: export the app instance
+module.exports = app;
+```
+
+#### Define the `POST /captains/login` API End Point
+
+Create a file named `captainRoutes.js` in the `./routes` directory. This `./routes/captainRoute.js` file will contain all the specification of the captain specific API end points. Here is how the `./routes/captainRoutes.js` file looks like at this point:
+
+```jsx
+// import dependencies
+const express = require("express");
+const captainControllers = require("../controllers/captainController.js");
+const captainMiddleware = require("../middleware/captainMiddleware.js");
+const { body } = require("express-validator");
+
+// initialize captain router
+const captainRouter = express.Router();
+
+// define API for captain
+captainRouter.post(
+  "/register",
+  [
+    body("fullName.firstName")
+      .isLength({ min: 3 })
+      .withMessage("First name must be at least 3 characters long"),
+    body("fullName.lastName")
+      .isLength({ min: 3 })
+      .withMessage("Last name must be at least 3 characters long"),
+    body("email").isEmail().withMessage("Invalid Email"),
+    body("password")
+      .isLength({ min: 6 })
+      .withMessage("Password must be at least 6 characters long"),
+    body("vehicle.color")
+      .isLength({ min: 3 })
+      .withMessage("Color must be at least 3 characters long"),
+    body("vehicle.plate")
+      .isLength({ min: 3 })
+      .withMessage("Plate must be at least 3 characters long"),
+    body("vehicle.capacity")
+      .isInt({ min: 1 })
+      .withMessage("Capacity must be at least 1"),
+    body("vehicle.vehicleType")
+      .isIn(["car", "motorcycle", "auto"])
+      .withMessage("Invalid vehicle type"),
+  ],
+  captainControllers.registerCaptain
+); // <--- Register Captain API
+
+captainRouter.post(
+  "/login",
+  [
+    body("email").isEmail().withMessage("Invalid Email"),
+    body("password").isLength({ min: 6 }).withMessage("Invalid Password"),
+  ],
+  captainControllers.loginCaptain
+); // <--- Login API for Captain
+
+// exports captain router
+module.exports = captainRouter;
+```
+
+#### Create Controllers for the `POST /captains/login` API End Point
+
+Create all the controllers required for the `POST /captains/login` API end point in the `./controllers/captainController.js` file. One of them is the `loginCaptain` and the implementation of which is as follows
+
+##### `loginCaptain` Controller Implementation
 
 `loginCaptain` is controller defined in the `./controllers/captainController.js` file. The controller validate the user by email validation, password validation and token validation. The followings are the implementation of the controller:
 
@@ -2119,27 +1973,32 @@ const captainService = require("../services/captainService.js");
 const registerCaptain = async (req, res, next) => {
   try {
     // step 1: extract necessary information from the request body
-    const { fullName, email, password, vehicle } = request.body;
+    const { fullName, email, password, vehicle } = req.body;
 
     // step 2: perfor error validation for all the field comming through the request body
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid inputs",
+        errors: errors.array(),
+      });
     }
 
     // step 3: check if the is any captain in the database with the same email
     const isCaptainExist = await captainModel.findOne({ email });
     if (isCaptainExist) {
-      return res
-        .status(400)
-        .json({ message: "Captain already exists with this email" });
+      return res.status(400).json({
+        success: false,
+        message: "Captain already exists with this email",
+      });
     }
 
     // step 4: hash the password
     const hashedPassword = await captainModel.hashPassword(password);
 
     // step 5: create captain
-    const captain = await captainService.createCaptain({
+    const captain = await captainServices.createCaptain({
       firstName: fullName.firstName,
       lastName: fullName.lastName,
       email,
@@ -2157,9 +2016,21 @@ const registerCaptain = async (req, res, next) => {
     res.cookie("token", token);
 
     // step 8: send response to the front end
-    res.status(201).json({ captain, token });
+    res.status(201).json({
+      captain: {
+        _id: captain._id,
+        fullName: captain.fullName,
+        email: captain.email,
+        status: captain.status,
+        vehicle: captain.vehicle,
+        __v: vehicle.__v,
+      },
+      token,
+      success: true,
+      message: "Captain registered successfully",
+    });
   } catch (error) {
-    res.status(402).json({ error, message: error.message });
+    res.status(402).json({ error, success: false, message: error.message });
   }
 };
 
@@ -2175,19 +2046,27 @@ const loginCaptain = async (req, res, next) => {
     // step 2: perform error validation for the data comming through the request body
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Email or Password",
+        errors: errors.array(),
+      });
     }
 
     // step 3: validate captain using email
     const captain = await captainModel.findOne({ email }).select("+password");
     if (!captain) {
-      return res.status(400).status({ message: "Invalid Email or Password" });
+      return res
+        .status(400)
+        .status({ success: false, message: "Invalid Email or Password" });
     }
 
     // step 4: validate captain's password
     const isMatch = await captain.comparePassword(password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid Email or Password" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid Email or Password" });
     }
 
     // step 5: generate authentication token
@@ -2197,15 +2076,558 @@ const loginCaptain = async (req, res, next) => {
     res.cookie("token", token);
 
     // step 7: send success response to the frontend with captain information and the token
-    res.status(200).json({ captain, token });
+    res.status(200).json({
+      captain: {
+        _id: captain._id,
+        fullName: captain.fullName,
+        email: captain.email,
+        status: captain.status,
+        vehicle: captain.vehicle,
+        __v: captain.__v,
+      },
+      token,
+      success: true,
+      message: "Captain Login Successful",
+    });
   } catch (error) {
-    res.status(400).json({ message: error.message, error });
+    res
+      .status(400)
+      .json({ success: false, error, message: error.message, error });
   }
 };
 
 // exports captain controllers
 module.exports = { registerCaptain, loginCaptain };
 ```
+
+### **03. `GET /captains/profile` - Get Loggedin Captain's Profile Information**
+
+An API end point specially allowcated for the captains to return the profile information of a captain
+
+#### Create Models for the API End Point
+
+If not done yet, Create mongoose Models required for the `GET /captains/profile` API end point. The following is the implementations of those required Models
+
+##### Captain Model Implementation
+
+Create a mongoose Schema for the captain model in the `./models/captainModel.js` file and using the `captainSchema`, Create a Model for the captain and finally export the `captainModel` from the `./models/captainModel.js` file. This is how the `./models/captainModel.js` file looks like:
+
+```jsx
+  // import dependencies
+  const mongoose = require('mongoose');
+  const bcrypt = require('bcrypt');
+  const jwt = require('jsonwebtoken');
+
+  // define captain shema
+  const captainSchema = new mongoose.Schema({
+    fullName: {
+      firstName: {
+        type: String,
+        required: true,
+        minlength: [3, 'First name must be at least 3 characters long']
+      },
+      lastName: {
+        type: String,
+        minlength: [3, 'Last name must be at least 3 characters long']
+      }
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      minlength: [5, 'Email must be at least 5 characters long']
+    },
+    password: {
+      type: String,
+      required: true,
+      select: false
+    },
+    socketId: {
+      type: String
+    },
+    status: {
+      type: String,
+      enum: ['active', 'inactive'],
+      default: 'inactive'
+    },
+    vehicle: {
+      color: {
+        type: String,
+        required: true,
+        minlength: [3, 'Color must be at least 3 character']
+      },
+      plate: {
+        type: String,
+        required: true,
+        minlength: [3, 'Plate must be at least 3 characters long']
+      },
+      capacity: {
+        type: Number
+        required: true,
+        min: [1, 'Capacity must be at least 1']
+      },
+      vehicleType: {
+        type: String,
+        required: true,
+        enum: ['car', 'motorcycle', 'auto']
+      }
+    },
+    location: {
+      lat: {
+        type: Number
+      },
+      lng: {
+        type: Number
+      }
+    }
+  })
+
+  // add methods
+  captainSchema.methods.generateToken = function() {
+    const token = jwt.sign({_id: this._id}, process.env.JWT_SECRET, {expiresIn: '24h'});
+    return token;
+  }
+
+  captainSchema.methods.comparePassword = async function(password) {
+    return await bcrypt.compare(password, this.password);
+  }
+
+  captainSchema.statics.hashPassword = async function (password) {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    return hashedPassword;
+  }
+
+  // create captain model
+  const captainModel = mongoose.model('Captains', captainSchema);
+
+  // export the captain model
+  module.exports = captainModel;
+```
+
+##### `blacklistTokenModel` Model Implementation
+
+`blacklistTokenModel` is a model to store all the black listed token in the databas. When a user logout, the logout API will take the token, which the user got after successfull login or registeration as a new user, and mark to the token in the database as a black listed token. The following are the step by step implementation of the model
+
+- Create a file named `blacklistTokenModel.js` in the `./mdodels` directory. In the `./models/blacklistTokenModel.js` file, create the schema for a blacklist token in such way that the blacklist token should automatically be deleted from the database after 24 hours from their creation.
+- Using the `blacklistTokenSchema`, create a model and export it.
+
+Here is how the `./models/blacklistTokenModel.js` file looks like at this point
+
+```jsx
+// import dependencies
+const mongoose = require("mongoose");
+
+// define schema for blacklist token
+const blacklistTokenSchema = new mongoose.Schema({
+  token: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  createAt: {
+    type: Date,
+    default: Date.now,
+    expires: 86400, // 24 hours in seconds
+  },
+});
+
+// create model for blacklist token
+const blacklistTokenModel = mongoose.model(
+  "BlacklistTokens",
+  blacklistTokenSchema
+);
+
+// exports the blacklistTokenModel
+module.exports = blacklistTokenModel;
+```
+
+#### Configure Routes for the API End Point
+
+Create a file named `captainRoutes.js` in the `./routes` directory. In the `./routes/captainRoutes.js` file, specify all the API end points specific to the captain and exports them from there.
+
+Import the captain routes in the `app.js` file and configure a captain route. Here is how the `app.js` file looks like at this point:
+
+```jsx
+// import dependencies
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const connectToDb = require("./db/db");
+const userRoutes = require("./routes/userRoutes.js");
+const serverRoutes = require("./routes/serverRoutes.js");
+const captainRoutes = require("./routes/captainRoutes.js");
+
+// step 1: initialize the express app
+const app = express();
+
+/  // step 2: configure app level middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// step 3: connect to the DB
+connectToDb();
+
+// step: 4: API routes configuration
+app.use("/", serverRoutes); // this will execute all the server specific routes
+app.use("/users", userRoutes); //  <--- user routes configuration
+app.use("/captains", captainRoutes); //  <--- captain routes configuration
+
+// step 5: export the app instance
+module.exports = app;
+```
+
+#### Define the `GET /captains/profile` API End Point
+
+Create a file named `captainRoutes.js` in the `./routes` directory. This `./routes/captainRoute.js` file will contain all the specification of the captain specific API end points. Here is how the `./routes/captainRoutes.js` file looks like at this point:
+
+```jsx
+// import dependencies
+const express = require("express");
+const captainControllers = require("../controllers/captainController.js");
+const captainMiddleware = require("../middleware/captainMiddleware.js");
+const { body } = require("express-validator");
+
+// initialize captain router
+const captainRouter = express.Router();
+
+// define API for captain
+captainRouter.post(
+  "/register",
+  [
+    body("fullName.firstName")
+      .isLength({ min: 3 })
+      .withMessage("First name must be at least 3 characters long"),
+    body("fullName.lastName")
+      .isLength({ min: 3 })
+      .withMessage("Last name must be at least 3 characters long"),
+    body("email").isEmail().withMessage("Invalid Email"),
+    body("password")
+      .isLength({ min: 6 })
+      .withMessage("Password must be at least 6 characters long"),
+    body("vehicle.color")
+      .isLength({ min: 3 })
+      .withMessage("Color must be at least 3 characters long"),
+    body("vehicle.plate")
+      .isLength({ min: 3 })
+      .withMessage("Plate must be at least 3 characters long"),
+    body("vehicle.capacity")
+      .isInt({ min: 1 })
+      .withMessage("Capacity must be at least 1"),
+    body("vehicle.vehicleType")
+      .isIn(["car", "motorcycle", "auto"])
+      .withMessage("Invalid vehicle type"),
+  ],
+  captainControllers.registerCaptain
+); // <--- Register Captain API
+
+captainRouter.post(
+  "/login",
+  [
+    body("email").isEmail().withMessage("Invalid Email"),
+    body("password").isLength({ min: 6 }).withMessage("Invalid Password"),
+  ],
+  captainControllers.loginCaptain
+); // <--- Login API for Captain
+
+captainRouter.get(
+  "/profile",
+  captainMiddleware.authCaptain,
+  captainControllers.getCaptainProfile
+); // <--- API for a captain's profile information
+
+// exports captain router
+module.exports = captainRouter;
+```
+
+#### Implement Middleware for the `GET /captains/profile` API End Point
+
+##### `authCaptain` Middleware Implementation
+
+Create a middleware function in the `./middleware/captainMiddleware.js` file and named it as `authCaptain` which will basically authenticate the idendtity of a captain using token validation. The followings are step by step actions that the `authCaptain` middleware performs
+
+- Extract the token from the cookies or from the headers
+- Check if the token is found or not. If NOT, then send an error response to the front end with status code 401 and a message saying 'Unauthorized access'
+- Check if the token is black listed or not
+- Decode the token using the `jwt.verify(token, secret)` method provided by the `jsonwebtoken` package. and extract the captain ID `_id` from the decoded information return by the `jwt.verify(token, secret)` method.
+- Find the captain from the database using the captin id and validate the captain;
+- If the captain is not found, terminate the request-response cycle and send an error response to the front end with a status code 401 and an error message saying 'Unauthorized access'.
+- Add the captain information in the request object so that the information can be accessed from the other middleware or controllers that runs after this `authCaptain` middleware.
+- call the `next` function to move forword.
+- If something goes wrong in the process, then catch the error and terminate the request-response cycle and send an error response to the front end with a status code 401 and a message saying 'Unauthorized access'.
+
+Here is how the `./middleware/captainMiddleware.js` file looks like at this point:
+
+```jsx
+const jwt = require("jsonwebtoken");
+const captainModel = require("../models/captainModel.js");
+
+// @name: authCaptain
+// @desc: A middleware function to authenticate a captain by using the token validation
+// @auth: Omar Bin Saleh
+const authCaptain = async (req, res, next) => {
+  // step 1: check if the token is found or not
+  const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized access" });
+  }
+
+  try {
+    // step 2: check if the token is black listed or not
+    const isBlackListed = await blacklistTokenModel.findOne({ token });
+    if (isBlackListed) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
+
+    // step 3: verify the token and validate the captain with the captai ID (_id)
+    const decodedObj = jwt.verify(token, process.env.JWT_SECRET);
+    const captain = await captainModel.findOne({ _id: decodedObj._id });
+    if (!captain) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
+
+    // step 4: add the captain information in the request object
+    req.captain = captain;
+    return next();
+  } catch (error) {
+    return res.status(401).json({ message: "Unauthorized access", error });
+  }
+};
+
+// export the middleware
+module.exports = { authCaptain };
+```
+
+#### Create Controllers for the `GET /captains/profile` API End Point
+
+##### `getCaptainProfile` Controller Implementation
+
+`getCaptainProfile` is a controller function which, after all validation, will return a captain's profile information. The validation part is handled by the `authCaptain` middleware. The following is how the `getCaptainProfile` controller is implemented along with the other controllers in the ` ./controllers/captainController.js` file.
+
+```jsx
+// import necessary dependencies
+const { validationResult } = require("express-validator");
+const captainModel = require("../models/captainModel.js");
+const captainServices = require("../services/captainService.js");
+const blacklistTokenModel = require("../models/blacklistTokenModel.js");
+
+// @name: registerCaptain
+// @path: POST /captains/register
+// @desc: Register a new captain in the system and send response to the front end after that
+// @auth: Omar Bin Saleh
+const registerCaptain = async (req, res, next) => {
+  try {
+    // step 1: extract necessary information from the request body
+    const { fullName, email, password, vehicle } = req.body;
+
+    // step 2: perfor error validation for all the field comming through the request body
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Invalid inputs",
+          errors: errors.array(),
+        });
+    }
+
+    // step 3: check if the is any captain in the database with the same email
+    const isCaptainExist = await captainModel.findOne({ email });
+    if (isCaptainExist) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Captain already exists with this email",
+        });
+    }
+
+    // step 4: hash the password
+    const hashedPassword = await captainModel.hashPassword(password);
+
+    // step 5: create captain
+    const captain = await captainServices.createCaptain({
+      firstName: fullName.firstName,
+      lastName: fullName.lastName,
+      email,
+      password: hashedPassword,
+      color: vehicle.color,
+      plate: vehicle.plate,
+      capacity: vehicle.capacity,
+      vehicleType: vehicle.vehicleType,
+    });
+
+    // step 6: generate token
+    const token = await captain.generateAuthToken();
+
+    // step 7: set the token in the cookies
+    res.cookie("token", token);
+
+    // step 8: send response to the front end
+    res.status(201).json({
+      captain: {
+        _id: captain._id,
+        fullName: captain.fullName,
+        email: captain.email,
+        status: captain.status,
+        vehicle: captain.vehicle,
+        __v: vehicle.__v,
+      },
+      token,
+      success: true,
+      message: "Captain registered successfully",
+    });
+  } catch (error) {
+    res.status(402).json({ error, success: false, message: error.message });
+  }
+};
+
+// @name: loginCaptain
+// @path: POST /captains/login
+// @desc: Login existing captain
+// @auth: Omar Bin Saleh
+const loginCaptain = async (req, res, next) => {
+  try {
+    // step 1: extract necessary data from the request body
+    const { email, password } = req.body;
+
+    // step 2: perform error validation for the data comming through the request body
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Invalid Email or Password",
+          errors: errors.array(),
+        });
+    }
+
+    // step 3: validate captain using email
+    const captain = await captainModel.findOne({ email }).select("+password");
+    if (!captain) {
+      return res
+        .status(400)
+        .status({ success: false, message: "Invalid Email or Password" });
+    }
+
+    // step 4: validate captain's password
+    const isMatch = await captain.comparePassword(password);
+    if (!isMatch) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid Email or Password" });
+    }
+
+    // step 5: generate authentication token
+    const token = captain.generateAuthToken();
+
+    // step 6: set the token in the cookies
+    res.cookie("token", token);
+
+    // step 7: send success response to the frontend with captain information and the token
+    res.status(200).json({
+      captain: {
+        _id: captain._id,
+        fullName: captain.fullName,
+        email: captain.email,
+        status: captain.status,
+        vehicle: captain.vehicle,
+        __v: captain.__v,
+      },
+      token,
+      success: true,
+      message: "Captain Login Successful",
+    });
+  } catch (error) {
+    res
+      .status(400)
+      .json({ success: false, error, message: error.message, error });
+  }
+};
+
+// @name: getCaptainProfile
+// @path: GET /captains/profile
+// @midd: authCaptain > getCaptainProfile
+// @desc: Return a captain's profile information
+// @auth: Omar Bin Saleh
+const getCaptainProfile = async (req, res, next) => {
+  res
+    .status(200)
+    .json({
+      captain: req.captain,
+      success: true,
+      message: "Captain profile is returned successfully",
+    });
+};
+
+// exports captain controllers
+module.exports = { registerCaptain, loginCaptain, getCaptainProfile };
+```
+
+==============================
+
+##### `authUser` Middleware Implementation
+
+`authUser` is a middleware function defined in the `./middleware/uathMiddleware.js` file. The middleware basically authenticates a user using token verification and add the user information in the `request` object, if it can authenticate the user successfully. The implementation of the middleware is as follows:
+
+- Extract the `token` from the `req.cookies` or `req.headers.authorization` .
+- Check if the `token` is found or not. If not, then terminate the request-response cycle and send an error message saying ‘Unauthorized access’ to the front end with status code 401.
+- If not defined already, then define a model named `blacklistTokenModel` in the `./models/blacklistTokenModel.js` file for the black listed token
+- Import the `blacklistTokenModel` model from the `./models/blacklistTokenModel.js` file
+- Using the `blacklistTokenModel`, Check if the token is black listed already or not. If the token is found to be a black listed token then terminate the request-response cycle and send an error message saying "Unauthorized access" to the front end with status code 401.
+- Decode the token using `jwt.verify(token, secret)` method which ultimately return a decoded object containing the user ID ( i.e. `_id` ) within it
+- Now find the user from the database using the user ID found in the decoded object.
+- Add the user information in the `request` object with a key `user` so that the other middleware or controller function that gets execute after this middleware can access the user information by `req.user` .
+  Here is how the `./middleware/authMiddleware.js` file looks like at this point:
+
+  ```jsx
+  const userModel = require("../models/userModel.js");
+  const jwt = require("jsonwebtoken");
+  const blacklistTokenModel = require("../mdoels/blacklistTokenModel.js");
+
+  // @name: authUser
+  // @desc: Authenticate a user by using the token validation
+  // @auth: Omar Bin Saleh
+  const authUser = async (req, res, next) => {
+    // step 1: check if the token is found or not
+    const token =
+      req.cookies?.token || req.headers?.authorization?.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
+
+    // step 2: check if the token is black listed
+    const isBlackListed = await blacklistTokenModel.findOne({ token });
+    if (isBlackListed) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
+
+    try {
+      // step 3: decode the token
+      const decodedObj = jwt.verify(token, process.env.JWT_SECRET);
+
+      // step 4: check if the user is found or not
+      const user = await userModel.findOne({ _id: decodedObj._id });
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized access" });
+      }
+
+      // step 5: add the user information in the request object
+      req.user = user;
+      return next();
+    } catch (error) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
+  };
+
+  // exports all auth middleware
+  module.exports = { authUser };
+  ```
+
+=======================
 
 ### `logoutCaptain` Controller Implementation
 
